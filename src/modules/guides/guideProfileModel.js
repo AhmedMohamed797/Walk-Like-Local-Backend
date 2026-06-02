@@ -7,6 +7,7 @@ const guideProfileSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
       unique: true,
     },
 
@@ -37,8 +38,6 @@ const guideProfileSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
-
-guideProfileSchema.index({ user: 1 }, { unique: true });
 
 const GuideProfile = mongoose.model("GuideProfile", guideProfileSchema);
 

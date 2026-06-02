@@ -31,8 +31,6 @@ const touristProfileSchema = new mongoose.Schema(
   },
 );
 
-touristProfileSchema.index({ user: 1 }, { unique: true });
-
 const TouristProfile = mongoose.model("TouristProfile", touristProfileSchema);
 
 export default TouristProfile;

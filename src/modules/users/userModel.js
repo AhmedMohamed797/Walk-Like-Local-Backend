@@ -24,7 +24,8 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       minlength: 8,
-      maxlength: 20,
+      maxlength: 60,
+      select: false,
     },
 
     role: {
@@ -94,8 +95,6 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
-
-userSchema.index({ email: 1 }, { unique: true });
 
 const User = mongoose.model("User", userSchema);
 

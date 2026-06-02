@@ -1,13 +1,13 @@
-import dotenv from 'dotenv';
+﻿import dotenv from "dotenv";
 
 dotenv.config();
 
-const requiredVars = ['PORT', 'NODE_ENV', 'MONGODB_URI', 'FRONTEND_URL'];
+const requiredVars = ["PORT", "NODE_ENV", "MONGODB_URI", "FRONTEND_URL", "JWT_SECRET"];
 
 const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
 if (missingVars.length > 0) {
-  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error(`Missing required environment variables: ${missingVars.join(", ")}`);
   process.exit(1);
 }
 
