@@ -109,7 +109,8 @@ Forgot password flow (separate user or after login):
 {
   "fullName": "Ahmed Mohamed",
   "email": "guide@example.com",
-  "password": "Password123"
+  "password": "Password123",
+  "confirmPassword": "NewPassword123"
 }
 ```
 
@@ -158,7 +159,8 @@ Forgot password flow (separate user or after login):
 {
   "fullName": "John Smith",
   "email": "tourist@example.com",
-  "password": "Password123"
+  "password": "Password123",
+  "confirmPassword": "NewPassword123"
 }
 ```
 
@@ -563,7 +565,8 @@ Same body as request password reset. Invalidates the previous code and sends a n
 ```json
 {
   "email": "guide@example.com",
-  "newPassword": "NewPassword123"
+  "password": "NewPassword123",
+  "confirmPassword": "NewPassword123"
 }
 ```
 
