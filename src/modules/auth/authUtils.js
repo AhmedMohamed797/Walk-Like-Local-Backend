@@ -1,27 +1,15 @@
 ﻿import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 
-//*---------------global vars for expiry times
+//*--------------- Global vars for expiry times
 const RESET_CODE_EXPIRY_MS = 10 * 60 * 1000;
 const EMAIL_VERIFICATION_EXPIRY_MS = 3 * 60 * 60 * 1000;
 
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-const transporter =
-  smtpUser && smtpPass
-    ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: false,
-      auth: { user: smtpUser, pass: smtpPass },
-    })
-    : null;
-
-
-//*------------------------------Tokens and pawssord functions
+//*------------------------------ Tokens and password functions
 export const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(12);
   return bcrypt.hash(password, salt);
@@ -38,8 +26,7 @@ export const signJwt = (payload) => {
   });
 };
 
-
-//*------------------------------Token generation for email and code verification
+//*------------------------------ Token generation for email and code verification
 export const generateRandomToken = () => crypto.randomBytes(32).toString("hex");
 
 export const generateResetCode = () =>
@@ -62,36 +49,53 @@ export const buildVerificationLink = (token) => {
   return `${baseUrl}/api/v1/auth/verify-email?token=${token}`;
 };
 
-
-//*------------------------------Email sending functions
+//*------------------------------ Core email sender via Brevo HTTP API
 const sendEmail = async ({ to, subject, text, html }) => {
   const debugPayload = { to, subject, text };
 
-  if (!transporter) {
-    console.log("[EMAIL] Mock send:", debugPayload);
+  if (!BREVO_API_KEY) {
+    console.log("[EMAIL] No BREVO_API_KEY set — mock send:", debugPayload);
     return;
   }
 
   if (process.env.NODE_ENV !== "production") {
-    console.log("[EMAIL] Sending via SMTP:", debugPayload);
+    console.log("[EMAIL] Sending via Brevo API:", debugPayload);
   }
 
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || smtpUser,
-      to,
-      subject,
-      text,
-      html,
-    });
-  } catch (error) {
+  const senderEmail = process.env.EMAIL_FROM || process.env.SMTP_USER;
+  if (!senderEmail) {
+    throw new Error("No sender email configured. Set EMAIL_FROM in your environment variables.");
+  }
+
+  const body = {
+    sender: { email: senderEmail },
+    to: [{ email: to }],
+    subject,
+    textContent: text,
+    htmlContent: html,
+  };
+
+  const response = await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "content-type": "application/json",
+      "api-key": BREVO_API_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    const error = new Error(`Brevo API error ${response.status}: ${errorText}`);
     if (process.env.NODE_ENV !== "production") {
-      console.error("[EMAIL] SMTP send failed:", error);
+      console.error("[EMAIL] Brevo send failed:", error.message);
     }
     throw error;
   }
 };
 
+//*------------------------------ Verification email
 export const sendVerificationEmail = async (user, rawToken) => {
   const link = buildVerificationLink(rawToken);
 
@@ -107,7 +111,8 @@ export const sendVerificationEmail = async (user, rawToken) => {
     `,
   });
 };
-//*------------------------------Password reset email
+
+//*------------------------------ Password reset email
 export const sendPasswordResetEmail = async (user, code) => {
   await sendEmail({
     to: user.email,
