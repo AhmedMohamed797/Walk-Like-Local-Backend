@@ -209,7 +209,7 @@ export const resendResetCode = asyncHandler(async (req, res) => {
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
-  await authService.resetPassword(req.body.email.toLowerCase(), req.body.newPassword);
+  await authService.resetPassword(req.body.email.toLowerCase(), req.body.password);
 
   return res.json({
     success: true,

@@ -7,6 +7,5 @@ docs/
 .env.*
 !.env.example
 
-
-
+*.md
 

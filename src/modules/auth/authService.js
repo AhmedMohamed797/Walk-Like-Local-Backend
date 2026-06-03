@@ -20,6 +20,7 @@ import {
 import { AUTH_PROVIDERS } from "../../constants/authProviders.js";
 import { ROLES } from "../../constants/roles.js";
 
+//*------------------------------Creating user profiles based on role
 const createProfileForRole = async (user) => {
   if (user.role === ROLES.GUIDE) {
     await GuideProfile.create({ user: user._id });
@@ -36,7 +37,7 @@ export const getAccessTokenForUser = (user) =>
     role: user.role,
     email: user.email,
   });
-
+//*------------------------------Main functions for auth
 export const registerAccount = async ({ fullName, email, password, role }, baseUrl) => {
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -83,7 +84,7 @@ export const registerTourist = async ({ fullName, email, password }) => {
 
   return { message: "Tourist account created successfully" };
 };
-
+//*-----------------------------Login
 export const login = async ({ email, password }) => {
   const user = await User.findOne({ email }).select("+password");
   if (!user) {
@@ -112,7 +113,7 @@ export const login = async ({ email, password }) => {
     user,
   };
 };
-
+//*-----------------------------Google OAuth
 const verifyGoogleIdToken = async (idToken) => {
   if (!idToken) {
     throw new AppError("Google idToken is required", 400);

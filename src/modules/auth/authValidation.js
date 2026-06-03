@@ -43,6 +43,18 @@ const resetCodeRules = body("code")
   .isLength({ min: 6, max: 6 })
   .withMessage("Reset code must be 6 digits");
 
+const confirmpasswordRules= body("confirmPassword")
+  .trim()
+  .notEmpty()
+  .withMessage("Confirm password is required")
+  .custom((value, { req }) => {
+    if (value !== req.body.password) {
+      console.log(`${value}, ${req.body.password}`);
+      throw new Error(`Confirm password does not match confirmed password`);
+    }
+    return true;
+  });
+
 export const handleValidation = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -54,18 +66,25 @@ export const handleValidation = (req, res, next) => {
   next();
 };
 
-export const registerGuideValidation = [fullNameRules, emailRules, passwordRules];
+
+export const registerGuideValidation = [fullNameRules, emailRules, passwordRules,confirmpasswordRules];
 export const registerTouristValidation = registerGuideValidation;
 export const loginValidation = [emailRules, body("password").notEmpty().withMessage("Password is required")];
 
 export const googleAuthValidation = [body("idToken").notEmpty().withMessage("Google idToken is required"), roleRules];
-export const googleOAuthStartValidation = [roleRules];
+export const googleOAuthStartValidation = [
+  query("role")
+    .notEmpty()
+    .withMessage("Role is required")
+    .isIn([ROLES.GUIDE, ROLES.TOURIST])
+    .withMessage("Role must be GUIDE or TOURIST"),
+];
 
 export const resendVerificationEmailValidation = [emailRules];
 export const requestPasswordResetValidation = [emailRules];
 
 export const verifyResetCodeValidation = [emailRules, resetCodeRules];
 
-export const resetPasswordValidation = [emailRules, newPasswordRules];
+export const resetPasswordValidation = [emailRules, newPasswordRules,confirmpasswordRules];
 
 export const changePasswordValidation = [body("currentPassword").notEmpty().withMessage("Current password is required"), newPasswordRules];

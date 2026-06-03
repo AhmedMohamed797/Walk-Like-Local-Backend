@@ -4,11 +4,11 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 
 //*---------------global vars for expiry times
-const RESET_CODE_EXPIRY_MS = 1 * 60 * 1000;
+const RESET_CODE_EXPIRY_MS = 10 * 60 * 1000;
 const EMAIL_VERIFICATION_EXPIRY_MS = 3 * 60 * 60 * 1000;
 
-const smtpUser = process.env.BREVO_SMTP_USER || process.env.SMTP_USER;
-const smtpPass = process.env.BREVO_SMTP_KEY || process.env.SMTP_PASS;
+const smtpUser = process.env.SMTP_USER;
+const smtpPass = process.env.SMTP_PASS;
 
 const transporter =
   smtpUser && smtpPass
@@ -112,11 +112,11 @@ export const sendPasswordResetEmail = async (user, code) => {
   await sendEmail({
     to: user.email,
     subject: "Your password reset code",
-    text: `Hi ${user.fullName},\n\nYour password reset code is: ${code}\n\nIt expires in 60 seconds.`,
+    text: `Hi ${user.fullName},\n\nYour password reset code is: ${code}\n\nIt expires in 10 minutes.`,
     html: `
       <p>Hi ${user.fullName},</p>
       <p>Your password reset code is: <strong>${code}</strong></p>
-      <p>It expires in 60 seconds.</p>
+      <p>It expires in 10 minutes.</p>
     `,
   });
 };
