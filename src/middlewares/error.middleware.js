@@ -1,8 +1,17 @@
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
 const errorHandler = (err, req, res, next) => {
-  res.status(500).json({
+  console.error("[ERROR]", err.message || err);
+
+  const status = err.status || 500;
+  const message = err.message || "Internal Server Error";
+
+  res.status(status).json({
     success: false,
-    message: 'Something went wrong',
+    message,
   });
 };
 
-export { errorHandler };
+export { errorHandler, asyncHandler };
