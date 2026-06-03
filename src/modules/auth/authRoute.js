@@ -28,6 +28,12 @@ import {
   changePasswordValidation,
 } from "./authValidation.js";
 import { authMiddleware } from "./authMiddleware.js";
+import {
+  resendVerificationRateLimiter,
+  resendResetCodeRateLimiter,
+  verificationResendCooldown,
+  resetCodeResendCooldown,
+} from "./authResendMiddleware.js";
 
 const router = Router();
 
@@ -44,12 +50,16 @@ router.post(
   "/resend-verification-email",
   resendVerificationEmailValidation,
   handleValidation,
+  resendVerificationRateLimiter,
+  verificationResendCooldown,
   resendVerificationEmail,
 );
 router.post(
   "/request-password-reset",
   requestPasswordResetValidation,
   handleValidation,
+  resendResetCodeRateLimiter,
+  resetCodeResendCooldown,
   requestPasswordReset,
 );
 router.post("/verify-reset-code", verifyResetCodeValidation, handleValidation, verifyResetCode);
@@ -57,6 +67,8 @@ router.post(
   "/resend-reset-code",
   requestPasswordResetValidation,
   handleValidation,
+  resendResetCodeRateLimiter,
+  resetCodeResendCooldown,
   resendResetCode,
 );
 router.post("/reset-password", resetPasswordValidation, handleValidation, resetPassword);

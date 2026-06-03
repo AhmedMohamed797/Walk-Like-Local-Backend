@@ -5,7 +5,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 const errorHandler = (err, req, res, next) => {
   console.error("[ERROR]", err.message || err);
 
-  const status = err.status || 500;
+  const status = err.statusCode || err.status || 500;
   const message = err.message || "Internal Server Error";
 
   res.status(status).json({
