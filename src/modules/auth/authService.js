@@ -1,5 +1,5 @@
 ﻿import User from "../users/userModel.js";
-import GuideProfile from "../guides/guideProfileModel.js";
+import GuideProfile from "../guides/models/guideProfileModel.js";
 import TouristProfile from "../tourists/touristProfileModel.js";
 import { AppError } from "../../utils/AppError.js";
 import {
