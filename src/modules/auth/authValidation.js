@@ -23,12 +23,12 @@ const fullNameRules = body("fullName")
   .isLength({ min: 3, max: 25 })
   .withMessage("Full name must be between 3 and 25 characters");
 
-const newPasswordRules = body("newPassword")
+const newPasswordRules = body("password")
   .trim()
   .notEmpty()
-  .withMessage("New password is required")
+  .withMessage("Password is required")
   .isLength({ min: 8 })
-  .withMessage("New password must be at least 8 characters");
+  .withMessage("Password must be at least 8 characters");
 
 const roleRules = body("role")
   .notEmpty()
@@ -43,7 +43,7 @@ const resetCodeRules = body("code")
   .isLength({ min: 6, max: 6 })
   .withMessage("Reset code must be 6 digits");
 
-const confirmpasswordRules= body("confirmPassword")
+const confirmpasswordRules = body("confirmPassword")
   .trim()
   .notEmpty()
   .withMessage("Confirm password is required")
@@ -67,7 +67,7 @@ export const handleValidation = (req, res, next) => {
 };
 
 
-export const registerGuideValidation = [fullNameRules, emailRules, passwordRules,confirmpasswordRules];
+export const registerGuideValidation = [fullNameRules, emailRules, passwordRules, confirmpasswordRules];
 export const registerTouristValidation = registerGuideValidation;
 export const loginValidation = [emailRules, body("password").notEmpty().withMessage("Password is required")];
 
@@ -85,6 +85,6 @@ export const requestPasswordResetValidation = [emailRules];
 
 export const verifyResetCodeValidation = [emailRules, resetCodeRules];
 
-export const resetPasswordValidation = [emailRules, newPasswordRules,confirmpasswordRules];
+export const resetPasswordValidation = [emailRules, newPasswordRules, confirmpasswordRules];
 
 export const changePasswordValidation = [body("currentPassword").notEmpty().withMessage("Current password is required"), newPasswordRules];
