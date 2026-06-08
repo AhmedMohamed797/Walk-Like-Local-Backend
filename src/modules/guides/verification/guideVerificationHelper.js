@@ -1,9 +1,13 @@
-import { DOCUMENT_VERIFICATION_STATUS, LANGUAGE_TEST_STATUS, ACCOUNT_VERIFICATION_STATUS } from "../../../constants/verificationStatus.js";
+import {
+  DOCUMENT_VERIFICATION_STATUS,
+  ACCOUNT_VERIFICATION_STATUS,
+} from "../../../constants/verificationStatus.js";
+import { hasPassedAllRequiredLanguageTests } from "../languageTest/languageTestHelper.js";
 
 export const updateGuideVerificationStatus = (guideProfile) => {
   if (
     guideProfile.documentVerificationStatus === DOCUMENT_VERIFICATION_STATUS.VERIFIED &&
-    guideProfile.languageTestStatus === LANGUAGE_TEST_STATUS.PASSED
+    hasPassedAllRequiredLanguageTests(guideProfile)
   ) {
     guideProfile.accountVerificationStatus = ACCOUNT_VERIFICATION_STATUS.VERIFIED;
 

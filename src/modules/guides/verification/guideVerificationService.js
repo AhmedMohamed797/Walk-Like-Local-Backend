@@ -40,7 +40,16 @@ export const getVerificationStatus = async (userId) => {
 
   return {
     documentVerificationStatus: guideProfile.documentVerificationStatus,
-    languageTestStatus: guideProfile.languageTestStatus,
+    languages: guideProfile.languages,
+    languageTests: guideProfile.languageTests.map((record) => ({
+      language: record.language,
+      status: record.status,
+      score: record.score,
+      attempts: record.attempts,
+      maxAttempts: record.maxAttempts,
+      lastTestDate: record.lastTestDate,
+      feedback: record.feedback,
+    })),
     accountVerificationStatus: guideProfile.accountVerificationStatus,
     verifiedLanguages: guideProfile.verifiedLanguages,
     rejectionReason: guideProfile.rejectionReason,
