@@ -8,6 +8,18 @@ const touristProfileSchema = new mongoose.Schema(
       ref: "User",
       required: true,
       unique: true,
+      index: true,
+    },
+
+    profilePhoto: {
+      secureUrl: {
+        type: String,
+        default: null,
+      },
+      publicId: {
+        type: String,
+        default: null,
+      },
     },
 
     passport: {
@@ -31,11 +43,10 @@ const touristProfileSchema = new mongoose.Schema(
       default: null,
     },
 
-    interests: [
-      {
-        type: String,
-      },
-    ],
+    nationality: {
+      type: String,
+      default: "",
+    },
 
     preferredLanguages: [
       {
@@ -43,10 +54,17 @@ const touristProfileSchema = new mongoose.Schema(
       },
     ],
 
-    nationality: {
-      type: String,
-      default: "",
-    },
+    interests: [
+      {
+        type: String,
+      },
+    ],
+
+    travelPreferences: [
+      {
+        type: String,
+      },
+    ],
   },
   {
     timestamps: true,
