@@ -70,14 +70,27 @@ export const syncLanguageTestRecords = (guideProfile, nextLanguages) => {
   );
 };
 
+const sanitizeExperiencePhoto = (photo) => {
+  const secureUrl = photo?.secureUrl || null;
+  const publicId = photo?.publicId || null;
+
+  if (!secureUrl && !publicId) {
+    return null;
+  }
+
+  return { secureUrl, publicId };
+};
+
 export const buildProfileCompletion = (guideProfile) => {
   const hasBio = Boolean(guideProfile.bio?.trim());
   const hasInterests = guideProfile.interests?.length > 0;
+  const hasExperience = Boolean(guideProfile.experience?.year?.trim());
   const hasLanguages = guideProfile.languages?.length >= GUIDE_PROFILE_LIMITS.MIN_LANGUAGES;
 
   const steps = {
     bio: hasBio,
     interests: hasInterests,
+    experience: hasExperience,
     languages: hasLanguages,
   };
 
@@ -94,6 +107,10 @@ export const buildProfileCompletion = (guideProfile) => {
 export const sanitizeGuideProfile = (guideProfile) => ({
   bio: guideProfile.bio,
   interests: guideProfile.interests,
+  experience: {
+    year: guideProfile.experience?.year || "",
+    photo: sanitizeExperiencePhoto(guideProfile.experience?.photo),
+  },
   languages: guideProfile.languages,
   verifiedLanguages: guideProfile.verifiedLanguages,
   languageTests: guideProfile.languageTests.map((record) => ({
@@ -108,7 +125,7 @@ export const sanitizeGuideProfile = (guideProfile) => ({
   documentVerificationStatus: guideProfile.documentVerificationStatus,
   accountVerificationStatus: guideProfile.accountVerificationStatus,
   profileCompletion: buildProfileCompletion(guideProfile),
-  supportedLanguages: SUPPORTED_GUIDE_LANGUAGES,
+  // supportedLanguages: SUPPORTED_GUIDE_LANGUAGES,
   createdAt: guideProfile.createdAt,
   updatedAt: guideProfile.updatedAt,
 });

@@ -35,6 +35,27 @@ export const updateGuideProfile = async (userId, updates) => {
     guideProfile.interests = updates.interests;
   }
 
+  if (updates.experience !== undefined) {
+    if (!guideProfile.experience) {
+      guideProfile.experience = { year: "", photo: {} };
+    }
+
+    if (updates.experience.year !== undefined) {
+      guideProfile.experience.year = updates.experience.year;
+    }
+
+    if (updates.experience.photo === null) {
+      guideProfile.experience.photo = { secureUrl: undefined, publicId: undefined };
+    } else if (updates.experience.photo !== undefined) {
+      guideProfile.experience.photo = {
+        secureUrl: updates.experience.photo.secureUrl,
+        publicId: updates.experience.photo.publicId,
+      };
+    }
+
+    guideProfile.markModified("experience");
+  }
+
   await guideProfile.save();
 
   return sanitizeGuideProfile(guideProfile);

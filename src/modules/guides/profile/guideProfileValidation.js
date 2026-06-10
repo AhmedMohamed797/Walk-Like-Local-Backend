@@ -15,6 +15,39 @@ export const handleValidation = (req, res, next) => {
   next();
 };
 
+const optionalCloudinaryMediaRules = (fieldName) => [
+  body(`${fieldName}.secureUrl`)
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage(`${fieldName} secureUrl cannot be empty`)
+    .isURL()
+    .withMessage(`${fieldName} secureUrl must be a valid URL`),
+  body(`${fieldName}.publicId`)
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage(`${fieldName} publicId cannot be empty`),
+  body(fieldName).custom((value) => {
+    if (value === null || value === undefined) {
+      return true;
+    }
+
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`${fieldName} must be an object with secureUrl and publicId`);
+    }
+
+    const hasSecureUrl = Boolean(String(value.secureUrl || "").trim());
+    const hasPublicId = Boolean(String(value.publicId || "").trim());
+
+    if (hasSecureUrl !== hasPublicId) {
+      throw new Error(`${fieldName} requires both secureUrl and publicId`);
+    }
+
+    return true;
+  }),
+];
+
 export const updateGuideProfileValidation = [
   body("bio")
     .optional()
@@ -38,10 +71,37 @@ export const updateGuideProfileValidation = [
       `Each interest must be at most ${GUIDE_PROFILE_LIMITS.MAX_INTEREST_LENGTH} characters`,
     ),
 
+  body("experience")
+    .optional()
+    .isObject()
+    .withMessage("experience must be an object"),
+
+  body("experience.year")
+    .optional()
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage("experience.year must be a non-empty string")
+    .isLength({ max: GUIDE_PROFILE_LIMITS.MAX_EXPERIENCE_YEAR_LENGTH })
+    .withMessage(
+      `experience.year must be at most ${GUIDE_PROFILE_LIMITS.MAX_EXPERIENCE_YEAR_LENGTH} characters`,
+    ),
+
+  ...optionalCloudinaryMediaRules("experience.photo"),
+
   body().custom((_, { req }) => {
-    if (req.body.bio === undefined && req.body.interests === undefined) {
-      throw new Error("At least one of bio or interests must be provided");
+    if (
+      req.body.bio === undefined &&
+      req.body.interests === undefined &&
+      req.body.experience === undefined
+    ) {
+      throw new Error("At least one of bio, interests, or experience must be provided");
     }
+
+    if (req.body.experience !== undefined && req.body.experience.year === undefined) {
+      throw new Error("experience.year is required when experience is provided");
+    }
+
     return true;
   }),
 ];

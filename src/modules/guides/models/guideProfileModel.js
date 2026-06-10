@@ -129,6 +129,18 @@ const guideProfileSchema = new mongoose.Schema(
       },
     ],
 
+    experience: {
+      year: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      photo: {
+        secureUrl: String,
+        publicId: String,
+      },
+    },
+
     languages: [
       {
         type: String,
