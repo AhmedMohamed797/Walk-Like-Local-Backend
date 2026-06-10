@@ -61,13 +61,11 @@ export const setGuideLanguagesValidation = [
     .notEmpty()
     .withMessage("Each language must be a non-empty string")
     .custom((value) => {
-      const isSupported = SUPPORTED_GUIDE_LANGUAGES.some(
-        (language) => language.toLowerCase() === String(value).trim().toLowerCase(),
-      );
+      const code = String(value).trim().toLowerCase();
 
-      if (!isSupported) {
+      if (!SUPPORTED_GUIDE_LANGUAGES.includes(code)) {
         throw new Error(
-          `Unsupported language: ${value}. Supported: ${SUPPORTED_GUIDE_LANGUAGES.join(", ")}`,
+          `Unsupported language code: ${value}. Supported codes: ${SUPPORTED_GUIDE_LANGUAGES.join(", ")}`,
         );
       }
 

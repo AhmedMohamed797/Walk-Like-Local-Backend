@@ -21,22 +21,17 @@ import {
 import {
   appendIntegrityEvents,
   applyIntegrityToEvaluation,
-  assertAudioMeetsMinimumSize,
-  assertSpokenAnswerUsesAudio,
   buildIntegrityWarnings,
   evaluateIntegrity,
-  getIntegrityPolicy,
-  normalizeQuestionTimings,
-  sanitizeIntegritySummary,
   toStoredIntegrityResult,
 } from "./languageTestIntegrity.js";
 import {
   addVerifiedLanguage,
   applyExpiredSessionToLanguageRecord,
   assertAllQuestionsAnswered,
-  assertClientCloudinaryAudio,
+  assertAudioMeetsMinimumSize,
+  buildAnswerSummaries,
   buildAttemptsSummary,
-  buildCaseInsensitiveLanguageRegex,
   buildExpiredSessionEvaluation,
   buildGptMessages,
   buildResultPayload,
@@ -46,13 +41,14 @@ import {
   getSessionExpiryDate,
   isLanguageOnProfile,
   isSessionExpired,
+  normalizeLanguageCode,
   parseJsonResponse,
   resolveAnswerAudioMimeType,
   sanitizeHistorySession,
   sanitizeLanguageTestRecord,
   sanitizeSession,
-  toIsoLanguageCode,
   toTtsCloudinaryPayload,
+  validateSpokenAnswer,
 } from "./languageTestHelper.js";
 
 const SESSION_INCLUDE_AUDIO = { includeAudio: true };
@@ -75,16 +71,16 @@ const getGuideProfileOrThrow = async (userId) => {
 const findOwnedSession = (userId, sessionId) =>
   LanguageTestSession.findOne({ _id: sessionId, user: userId });
 
-const assertCanStartLanguageTest = (languageRecord, language) => {
+const assertCanStartLanguageTest = (languageRecord, languageCode) => {
   if (languageRecord.status === LANGUAGE_TEST_STATUS.PASSED) {
-    throw new AppError(`Language test already passed for ${language}`, 400);
+    throw new AppError(`Language test already passed for ${languageCode}`, 400);
   }
 
   if (
     languageRecord.status === LANGUAGE_TEST_STATUS.LOCKED ||
     languageRecord.attempts >= languageRecord.maxAttempts
   ) {
-    throw new AppError(`Maximum language test attempts reached for ${language}`, 403);
+    throw new AppError(`Maximum language test attempts reached for ${languageCode}`, 403);
   }
 };
 
@@ -150,8 +146,8 @@ const attachTtsAudioToSpokenQuestions = async (sessionId, questions) =>
     }),
   );
 
-const generateQuestionTexts = async (language) => {
-  const parsed = await callGptJson(buildQuestionGenerationPrompt(language));
+const generateQuestionTexts = async (languageCode) => {
+  const parsed = await callGptJson(buildQuestionGenerationPrompt(languageCode));
   const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
 
   if (questions.length === 0) {
@@ -162,11 +158,9 @@ const generateQuestionTexts = async (language) => {
 };
 
 const processSpokenAnswer = async (session, rawAnswer) => {
-  assertSpokenAnswerUsesAudio(rawAnswer);
-  assertClientCloudinaryAudio(rawAnswer);
+  validateSpokenAnswer(rawAnswer);
 
   const audioUrl = String(rawAnswer.audioUrl).trim();
-  const audioPublicId = String(rawAnswer.audioPublicId).trim();
   const mimeType = resolveAnswerAudioMimeType(audioUrl, rawAnswer.audioMimeType);
 
   const audioBuffer = await fetchAudioBufferFromUrl(audioUrl);
@@ -174,7 +168,7 @@ const processSpokenAnswer = async (session, rawAnswer) => {
 
   const transcript = await transcribeAudio({
     audioBuffer,
-    languageCode: toIsoLanguageCode(session.language),
+    languageCode: session.language,
     mimeType,
   });
 
@@ -184,7 +178,6 @@ const processSpokenAnswer = async (session, rawAnswer) => {
     transcript,
     inputMode: ANSWER_INPUT_MODE.AUDIO,
     audioUrl,
-    audioPublicId,
     audioMimeType: mimeType,
   };
 };
@@ -208,6 +201,7 @@ const processWrittenAnswer = (rawAnswer) => {
     answer,
     transcript: null,
     inputMode: ANSWER_INPUT_MODE.TEXT,
+    audioUrl: null,
     audioMimeType: null,
   };
 };
@@ -229,8 +223,8 @@ const processSubmittedAnswers = async (session, rawAnswers) => {
   );
 };
 
-const evaluateAnswersWithGpt = async (language, questions, answers) => {
-  const parsed = await callGptJson(buildEvaluationPrompt(language, questions, answers));
+const evaluateAnswersWithGpt = async (languageCode, questions, answers) => {
+  const parsed = await callGptJson(buildEvaluationPrompt(languageCode, questions, answers));
   const overallScore = Number(parsed.overallScore);
   const normalizedScore = Number.isFinite(overallScore) ? Math.round(overallScore) : 0;
 
@@ -266,15 +260,15 @@ const applyEvaluationToLanguageRecord = async (guideProfile, languageRecord, res
   await guideProfile.save();
 };
 
-const syncLanguageRecordWithSessionHistory = async (guideProfile, userId, language) => {
-  const languageRecord = findLanguageTestRecord(guideProfile, language);
+const syncLanguageRecordWithSessionHistory = async (guideProfile, userId, languageCode) => {
+  const languageRecord = findLanguageTestRecord(guideProfile, languageCode);
   if (!languageRecord) {
     return;
   }
 
   const terminalSessionCount = await LanguageTestSession.countDocuments({
     user: userId,
-    language: buildCaseInsensitiveLanguageRegex(language),
+    language: languageCode,
     status: { $in: TERMINAL_SESSION_STATUSES },
   });
 
@@ -317,12 +311,10 @@ const expireActiveSessionIfNeeded = async (guideProfile, session, userId) => {
   return true;
 };
 
-const reconcileLanguageTestState = async (guideProfile, userId, language) => {
-  const languageRegex = buildCaseInsensitiveLanguageRegex(language);
-
+const reconcileLanguageTestState = async (guideProfile, userId, languageCode) => {
   const staleSessions = await LanguageTestSession.find({
     user: userId,
-    language: languageRegex,
+    language: languageCode,
     status: SESSION_STATUS.IN_PROGRESS,
     expiresAt: { $lte: new Date() },
   });
@@ -331,16 +323,16 @@ const reconcileLanguageTestState = async (guideProfile, userId, language) => {
     await expireActiveSessionIfNeeded(guideProfile, session, userId);
   }
 
-  await syncLanguageRecordWithSessionHistory(guideProfile, userId, language);
+  await syncLanguageRecordWithSessionHistory(guideProfile, userId, languageCode);
 
-  const languageRecord = findLanguageTestRecord(guideProfile, language);
+  const languageRecord = findLanguageTestRecord(guideProfile, languageCode);
   if (!languageRecord) {
     return;
   }
 
   const hasActiveSession = await LanguageTestSession.exists({
     user: userId,
-    language: languageRegex,
+    language: languageCode,
     status: SESSION_STATUS.IN_PROGRESS,
     expiresAt: { $gt: new Date() },
   });
@@ -356,7 +348,6 @@ const buildStartPayload = (resumed, languageRecord, session) => ({
   resumed,
   language: languageRecord.language,
   session: sanitizeSession(session, SESSION_INCLUDE_AUDIO),
-  integrityPolicy: getIntegrityPolicy(),
   ...buildAttemptsSummary(languageRecord),
 });
 
@@ -393,26 +384,26 @@ const resolveSessionStatus = (evaluation, languageRecord) => {
     : SESSION_STATUS.FAILED;
 };
 
-export const startLanguageTest = async (userId, language) => {
+export const startLanguageTest = async (userId, languageCode) => {
+  const code = normalizeLanguageCode(languageCode);
   const guideProfile = await getGuideProfileOrThrow(userId);
 
-  if (!isLanguageOnProfile(guideProfile, language)) {
+  if (!isLanguageOnProfile(guideProfile, code)) {
     throw new AppError(
-      `Language "${language}" is not on your profile. Add it via PUT /guides/profile/languages first.`,
+      `Language "${code}" is not on your profile. Add it via PUT /guides/profile/languages first.`,
       400,
     );
   }
 
-  const languageRecord = findOrCreateLanguageTestRecord(guideProfile, language);
+  const languageRecord = findOrCreateLanguageTestRecord(guideProfile, code);
 
   await reconcileLanguageTestState(guideProfile, userId, languageRecord.language);
 
-  assertCanStartLanguageTest(languageRecord, language);
+  assertCanStartLanguageTest(languageRecord, code);
 
-  const languageRegex = buildCaseInsensitiveLanguageRegex(languageRecord.language);
   const existingSession = await LanguageTestSession.findOne({
     user: userId,
-    language: languageRegex,
+    language: languageRecord.language,
     status: SESSION_STATUS.IN_PROGRESS,
     expiresAt: { $gt: new Date() },
   }).sort({ createdAt: -1 });
@@ -457,21 +448,13 @@ export const reportLanguageTestIntegrityEvents = async (userId, sessionId, event
   const counts = appendIntegrityEvents(session, events);
   await session.save();
 
-  const policy = getIntegrityPolicy();
   return {
     sessionId: session._id,
-    counts,
-    warnings: buildIntegrityWarnings(counts, policy),
-    integrityPolicy: policy,
+    warnings: buildIntegrityWarnings(counts),
   };
 };
 
-export const submitLanguageTestAnswers = async (
-  userId,
-  sessionId,
-  rawAnswers,
-  integrityPayload = {},
-) => {
+export const submitLanguageTestAnswers = async (userId, sessionId, rawAnswers) => {
   const guideProfile = await getGuideProfileOrThrow(userId);
   const session = await getActiveSessionOrThrow(userId, sessionId);
 
@@ -485,11 +468,9 @@ export const submitLanguageTestAnswers = async (
   const answers = await processSubmittedAnswers(session, rawAnswers);
   let evaluation = await evaluateAnswersWithGpt(session.language, session.questions, answers);
 
-  const questionTimings = normalizeQuestionTimings(integrityPayload.questionTimings);
   const integrityResult = evaluateIntegrity({
     session,
     questions: session.questions,
-    questionTimings,
     evaluation,
   });
 
@@ -506,12 +487,7 @@ export const submitLanguageTestAnswers = async (
 
   return buildResultPayload(languageRecord, evaluation, {
     sessionId: session._id,
-    attemptNumber: session.attemptNumber,
-    issues: evaluation.issues,
-    spokenQuestionsCount: LANGUAGE_TEST_CONFIG.SPOKEN_QUESTIONS_COUNT,
-    writtenQuestionsCount: LANGUAGE_TEST_CONFIG.WRITTEN_QUESTIONS_COUNT,
-    integrity: sanitizeIntegritySummary(integrityResult),
-    likelyAiGenerated: evaluation.likelyAiGenerated,
+    answers: buildAnswerSummaries(answers),
   });
 };
 
@@ -535,16 +511,15 @@ export const getLanguageTestStatus = async (userId) => {
     activeSession: activeSession
       ? sanitizeSession(activeSession, SESSION_INCLUDE_AUDIO)
       : null,
-    integrityPolicy: getIntegrityPolicy(),
   };
 };
 
-export const getLanguageTestHistory = async (userId, language) => {
+export const getLanguageTestHistory = async (userId, languageCode) => {
   await getGuideProfileOrThrow(userId);
 
   const filter = { user: userId };
-  if (language) {
-    filter.language = buildCaseInsensitiveLanguageRegex(language);
+  if (languageCode) {
+    filter.language = normalizeLanguageCode(languageCode);
   }
 
   const sessions = await LanguageTestSession.find(filter)
@@ -565,10 +540,7 @@ export const getLanguageTestSession = async (userId, sessionId) => {
     await expireActiveSessionIfNeeded(guideProfile, session, userId);
   }
 
-  return {
-    ...sanitizeSession(session, SESSION_INCLUDE_AUDIO),
-    integrityPolicy: getIntegrityPolicy(),
-  };
+  return sanitizeSession(session, SESSION_INCLUDE_AUDIO);
 };
 
 export const getQuestionTtsAudio = async (userId, sessionId, questionId) => {

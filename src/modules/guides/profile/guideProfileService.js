@@ -4,7 +4,7 @@ import { GUIDE_PROFILE_LIMITS } from "../../../constants/guideProfileConstants.j
 import { updateGuideVerificationStatus } from "../verification/guideVerificationHelper.js";
 import {
   assertCanUpdateLanguages,
-  normalizeLanguageList,
+  normalizeLanguageCodeList,
   sanitizeGuideProfile,
   syncLanguageTestRecords,
 } from "./guideProfileHelper.js";
@@ -42,7 +42,7 @@ export const updateGuideProfile = async (userId, updates) => {
 
 export const setGuideLanguages = async (userId, languages) => {
   const guideProfile = await getGuideProfileOrThrow(userId);
-  const normalizedLanguages = normalizeLanguageList(languages);
+  const normalizedLanguages = normalizeLanguageCodeList(languages);
 
   if (normalizedLanguages.length < GUIDE_PROFILE_LIMITS.MIN_LANGUAGES) {
     throw new AppError(

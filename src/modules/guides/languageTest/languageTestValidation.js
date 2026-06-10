@@ -2,6 +2,7 @@ import { body, param, query, validationResult } from "express-validator";
 import {
   INTEGRITY_EVENT_TYPE_VALUES,
   LANGUAGE_TEST_CONFIG,
+  SUPPORTED_LANGUAGE_CODES,
 } from "../../../constants/languageTestConstants.js";
 
 export const handleValidation = (req, res, next) => {
@@ -19,19 +20,28 @@ export const startLanguageTestValidation = [
   body("language")
     .trim()
     .notEmpty()
-    .withMessage("Language is required")
-    .isLength({ max: LANGUAGE_TEST_CONFIG.MAX_LANGUAGE_LENGTH })
-    .withMessage(`Language must be at most ${LANGUAGE_TEST_CONFIG.MAX_LANGUAGE_LENGTH} characters`),
+    .withMessage("Language code is required")
+    .isLength({ max: LANGUAGE_TEST_CONFIG.MAX_LANGUAGE_CODE_LENGTH })
+    .withMessage(
+      `Language code must be at most ${LANGUAGE_TEST_CONFIG.MAX_LANGUAGE_CODE_LENGTH} characters`,
+    )
+    .custom((value) => {
+      const code = String(value).trim().toLowerCase();
+
+      if (!SUPPORTED_LANGUAGE_CODES.includes(code)) {
+        throw new Error(
+          `Unsupported language code: ${value}. Supported codes: ${SUPPORTED_LANGUAGE_CODES.join(", ")}`,
+        );
+      }
+
+      return true;
+    }),
 ];
 
 export const submitLanguageTestValidation = [
-  param("sessionId")
-    .isMongoId()
-    .withMessage("A valid session id is required"),
+  param("sessionId").isMongoId().withMessage("A valid session id is required"),
 
-  body("answers")
-    .isArray({ min: 1 })
-    .withMessage("Answers must be a non-empty array"),
+  body("answers").isArray({ min: 1 }).withMessage("Answers must be a non-empty array"),
 
   body("answers.*.questionId")
     .trim()
@@ -52,43 +62,14 @@ export const submitLanguageTestValidation = [
     .isURL()
     .withMessage("audioUrl must be a valid URL"),
 
-  body("answers.*.audioPublicId")
-    .optional()
-    .trim()
-    .isString()
-    .withMessage("audioPublicId must be a string"),
-
   body("answers.*.audioMimeType")
     .optional()
     .isString()
     .withMessage("audioMimeType must be a string"),
-
-  body("integrity")
-    .optional()
-    .isObject()
-    .withMessage("integrity must be an object"),
-
-  body("integrity.questionTimings")
-    .optional()
-    .isArray()
-    .withMessage("integrity.questionTimings must be an array"),
-
-  body("integrity.questionTimings.*.questionId")
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage("Each question timing must include questionId"),
-
-  body("integrity.questionTimings.*.secondsSpent")
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage("secondsSpent must be a non-negative number"),
 ];
 
 export const integrityEventsValidation = [
-  param("sessionId")
-    .isMongoId()
-    .withMessage("A valid session id is required"),
+  param("sessionId").isMongoId().withMessage("A valid session id is required"),
 
   body("events")
     .isArray({ min: 1, max: LANGUAGE_TEST_CONFIG.MAX_INTEGRITY_EVENTS_PER_REQUEST })
@@ -114,23 +95,27 @@ export const integrityEventsValidation = [
 ];
 
 export const sessionIdValidation = [
-  param("sessionId")
-    .isMongoId()
-    .withMessage("A valid session id is required"),
+  param("sessionId").isMongoId().withMessage("A valid session id is required"),
 ];
 
 export const questionIdValidation = [
   ...sessionIdValidation,
-  param("questionId")
-    .trim()
-    .notEmpty()
-    .withMessage("A valid question id is required"),
+  param("questionId").trim().notEmpty().withMessage("A valid question id is required"),
 ];
 
 export const historyLanguageQueryValidation = [
   query("language")
     .optional()
     .trim()
-    .isLength({ max: LANGUAGE_TEST_CONFIG.MAX_LANGUAGE_LENGTH })
-    .withMessage(`Language must be at most ${LANGUAGE_TEST_CONFIG.MAX_LANGUAGE_LENGTH} characters`),
+    .custom((value) => {
+      const code = String(value).trim().toLowerCase();
+
+      if (!SUPPORTED_LANGUAGE_CODES.includes(code)) {
+        throw new Error(
+          `Unsupported language code: ${value}. Supported codes: ${SUPPORTED_LANGUAGE_CODES.join(", ")}`,
+        );
+      }
+
+      return true;
+    }),
 ];

@@ -2,6 +2,7 @@ import * as languageTestService from "./languageTestService.js";
 import { asyncHandler } from "../../../middlewares/error.middleware.js";
 import { LANGUAGE_TEST_STATUS } from "../../../constants/verificationStatus.js";
 import { ROLES } from "../../../constants/roles.js";
+import { getLanguageDisplayName } from "../../../constants/languageTestConstants.js";
 
 const ensureGuide = (req, res) => {
   if (req.user.role !== ROLES.GUIDE) {
@@ -15,19 +16,21 @@ const ensureGuide = (req, res) => {
 };
 
 const buildSubmitMessage = (data) => {
+  const languageLabel = getLanguageDisplayName(data.language);
+
   if (data.pass) {
-    return `Language test passed for ${data.language}`;
+    return `Language test passed for ${languageLabel}`;
   }
 
-  if (data.integrity?.passed === false) {
-    return `Language test failed integrity checks for ${data.language}`;
+  if (data.integrityPassed === false) {
+    return `Language test failed integrity checks for ${languageLabel}`;
   }
 
   if (data.status === LANGUAGE_TEST_STATUS.LOCKED) {
-    return `Maximum attempts reached for ${data.language}`;
+    return `Maximum attempts reached for ${languageLabel}`;
   }
 
-  return `Language test failed for ${data.language}`;
+  return `Language test failed for ${languageLabel}`;
 };
 
 export const startLanguageTest = asyncHandler(async (req, res) => {
@@ -38,8 +41,8 @@ export const startLanguageTest = asyncHandler(async (req, res) => {
   return res.status(201).json({
     success: true,
     message: data.resumed
-      ? `Existing ${data.language} test session resumed`
-      : `${data.language} language test started successfully`,
+      ? `Existing ${getLanguageDisplayName(data.language)} test session resumed`
+      : `${getLanguageDisplayName(data.language)} language test started successfully`,
     data,
   });
 });
@@ -51,7 +54,6 @@ export const submitLanguageTestAnswers = asyncHandler(async (req, res) => {
     req.user._id,
     req.params.sessionId,
     req.body.answers,
-    req.body.integrity,
   );
 
   return res.json({

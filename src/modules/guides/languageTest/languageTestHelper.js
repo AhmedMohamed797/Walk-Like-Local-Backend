@@ -1,28 +1,25 @@
 import cloudinary from "../../../config/cloudinary.js";
 import { LANGUAGE_TEST_STATUS } from "../../../constants/verificationStatus.js";
 import {
-  LANGUAGE_ISO_CODES,
+  ANSWER_INPUT_MODE,
   LANGUAGE_TEST_CONFIG,
   QUESTION_TYPE,
+  resolveSupportedLanguageCode,
 } from "../../../constants/languageTestConstants.js";
 import { AppError } from "../../../utils/AppError.js";
 
 const GPT_SYSTEM_JSON_ONLY = "Return strict JSON only.";
-const { ANSWER_AUDIO_CLOUDINARY_FOLDER, TTS_AUDIO_CLOUDINARY_FOLDER } = LANGUAGE_TEST_CONFIG;
+const { TTS_AUDIO_CLOUDINARY_FOLDER } = LANGUAGE_TEST_CONFIG;
 
-export const normalizeLanguageKey = (language) =>
-  String(language || "").trim().toLowerCase();
-
-export const languagesMatch = (left, right) =>
-  normalizeLanguageKey(left) === normalizeLanguageKey(right);
-
-export const buildCaseInsensitiveLanguageRegex = (language) =>
-  new RegExp(`^${String(language).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
-
-export const toIsoLanguageCode = (language) => {
-  const key = normalizeLanguageKey(language);
-  return LANGUAGE_ISO_CODES[key] || key.slice(0, 2);
+export const normalizeLanguageCode = (languageCode) => {
+  try {
+    return resolveSupportedLanguageCode(languageCode);
+  } catch (error) {
+    throw new AppError(error.message, 400);
+  }
 };
+
+// --- GPT helpers ---
 
 export const parseJsonResponse = (rawContent) => {
   const trimmed = String(rawContent || "").trim();
@@ -33,6 +30,13 @@ export const parseJsonResponse = (rawContent) => {
   return JSON.parse(jsonText);
 };
 
+export const buildGptMessages = (taskPrompt) => [
+  { role: "system", content: GPT_SYSTEM_JSON_ONLY },
+  { role: "user", content: taskPrompt },
+];
+
+// --- Session timing ---
+
 export const getSessionExpiryDate = () => {
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + LANGUAGE_TEST_CONFIG.SESSION_EXPIRY_HOURS);
@@ -42,18 +46,21 @@ export const getSessionExpiryDate = () => {
 export const isSessionExpired = (session) =>
   session.expiresAt && session.expiresAt.getTime() < Date.now();
 
-export const findLanguageTestRecord = (guideProfile, language) =>
-  guideProfile.languageTests.find((record) => languagesMatch(record.language, language));
+// --- Guide profile language test records ---
 
-export const isLanguageOnProfile = (guideProfile, language) =>
-  guideProfile.languages?.some((profileLanguage) => languagesMatch(profileLanguage, language));
+export const findLanguageTestRecord = (guideProfile, languageCode) =>
+  guideProfile.languageTests.find((record) => record.language === languageCode);
 
-export const findOrCreateLanguageTestRecord = (guideProfile, language) => {
-  let record = findLanguageTestRecord(guideProfile, language);
+export const isLanguageOnProfile = (guideProfile, languageCode) =>
+  guideProfile.languages?.includes(languageCode);
+
+export const findOrCreateLanguageTestRecord = (guideProfile, languageCode) => {
+  const code = normalizeLanguageCode(languageCode);
+  let record = findLanguageTestRecord(guideProfile, code);
 
   if (!record) {
     record = {
-      language: String(language).trim(),
+      language: code,
       status: LANGUAGE_TEST_STATUS.NOT_STARTED,
       score: null,
       attempts: 0,
@@ -67,6 +74,23 @@ export const findOrCreateLanguageTestRecord = (guideProfile, language) => {
   return record;
 };
 
+export const hasPassedAllRequiredLanguageTests = (guideProfile) => {
+  const requiredLanguages =
+    guideProfile.languages?.length > 0 ? guideProfile.languages : guideProfile.verifiedLanguages;
+
+  if (!requiredLanguages?.length) {
+    return false;
+  }
+
+  return requiredLanguages.every((language) => guideProfile.verifiedLanguages.includes(language));
+};
+
+export const addVerifiedLanguage = (guideProfile, languageCode) => {
+  if (!guideProfile.verifiedLanguages.includes(languageCode)) {
+    guideProfile.verifiedLanguages.push(languageCode);
+  }
+};
+
 export const buildAttemptsSummary = (languageRecord) => {
   const { maxAttempts, attempts: attemptsUsed } = languageRecord;
 
@@ -77,6 +101,36 @@ export const buildAttemptsSummary = (languageRecord) => {
   };
 };
 
+export const applyExpiredSessionToLanguageRecord = (languageRecord) => {
+  if (languageRecord.status !== LANGUAGE_TEST_STATUS.IN_PROGRESS) {
+    return false;
+  }
+
+  languageRecord.attempts += 1;
+  languageRecord.lastTestDate = new Date();
+  languageRecord.score = 0;
+  languageRecord.feedback = LANGUAGE_TEST_CONFIG.SESSION_EXPIRED_FEEDBACK;
+  languageRecord.status =
+    languageRecord.attempts >= languageRecord.maxAttempts
+      ? LANGUAGE_TEST_STATUS.LOCKED
+      : LANGUAGE_TEST_STATUS.FAILED;
+
+  return true;
+};
+
+export const buildExpiredSessionEvaluation = () => ({
+  overallScore: 0,
+  pass: false,
+  feedback: LANGUAGE_TEST_CONFIG.SESSION_EXPIRED_FEEDBACK,
+  issues: ["Session expired without submission"],
+  likelyAiGenerated: false,
+  aiDetectionDetails: "",
+  integrityPassed: true,
+  integrityIssues: [],
+});
+
+// --- API response shaping ---
+
 export const sanitizeLanguageTestRecord = (record) => ({
   language: record.language,
   status: record.status,
@@ -86,30 +140,35 @@ export const sanitizeLanguageTestRecord = (record) => ({
   ...buildAttemptsSummary(record),
 });
 
-export const hasPassedAllRequiredLanguageTests = (guideProfile) => {
-  const requiredLanguages =
-    guideProfile.languages?.length > 0
-      ? guideProfile.languages
-      : guideProfile.verifiedLanguages;
+export const buildAnswerSummaries = (answers = []) =>
+  answers.map((answer) => {
+    if (answer.inputMode === ANSWER_INPUT_MODE.AUDIO) {
+      return {
+        questionId: answer.questionId,
+        audioUrl: answer.audioUrl,
+        transcribedAudio: answer.transcript,
+      };
+    }
 
-  if (!requiredLanguages?.length) {
-    return false;
-  }
-
-  return requiredLanguages.every((language) =>
-    guideProfile.verifiedLanguages.some((verified) => languagesMatch(verified, language)),
-  );
-};
+    return {
+      questionId: answer.questionId,
+      answer: answer.answer,
+    };
+  });
 
 export const buildResultPayload = (languageRecord, evaluation, extra = {}) => {
   const payload = {
+    sessionId: extra.sessionId,
+    language: languageRecord.language,
+    pass: evaluation.pass,
     score: evaluation.overallScore,
     status: languageRecord.status,
-    language: languageRecord.language,
     feedback: evaluation.feedback,
-    pass: evaluation.pass,
+    issues: evaluation.issues || [],
+    integrityPassed: evaluation.integrityPassed !== false,
+    integrityIssues: evaluation.integrityIssues || [],
+    answers: extra.answers || [],
     ...buildAttemptsSummary(languageRecord),
-    ...extra,
   };
 
   if (languageRecord.status === LANGUAGE_TEST_STATUS.LOCKED) {
@@ -152,14 +211,13 @@ export const sanitizeSession = (session, options = {}) => ({
   completedAt: session.completedAt,
   evaluation: session.evaluation
     ? {
-        overallScore: session.evaluation.overallScore,
+        score: session.evaluation.overallScore,
         pass: session.evaluation.pass,
         feedback: session.evaluation.feedback,
-        integrityPassed: session.evaluation.integrityPassed,
-        integrityFlags: session.evaluation.integrityFlags || [],
+        integrityPassed: session.evaluation.integrityPassed !== false,
+        integrityIssues: session.evaluation.integrityIssues || [],
       }
     : null,
-  integrityResult: session.integrityResult || null,
 });
 
 export const sanitizeHistorySession = (session) => ({
@@ -175,7 +233,24 @@ export const sanitizeHistorySession = (session) => ({
   createdAt: session.createdAt,
 });
 
-export const uploadTtsAudioToCloudinary = async (audioBuffer, { sessionId, questionId }) =>
+// --- Submit validation ---
+
+export const assertAllQuestionsAnswered = (questions, rawAnswers) => {
+  const expectedIds = new Set(questions.map((question) => question.id));
+  const submittedIds = new Set(rawAnswers.map((answer) => answer.questionId));
+
+  const allAnswered =
+    expectedIds.size === submittedIds.size &&
+    [...expectedIds].every((questionId) => submittedIds.has(questionId));
+
+  if (!allAnswered) {
+    throw new AppError("All questions must be answered before submission", 400);
+  }
+};
+
+// --- TTS question audio ---
+
+const uploadTtsAudioToCloudinary = (audioBuffer, { sessionId, questionId }) =>
   new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -185,13 +260,7 @@ export const uploadTtsAudioToCloudinary = async (audioBuffer, { sessionId, quest
         overwrite: true,
         format: "mp3",
       },
-      (error, result) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(result);
-      },
+      (error, result) => (error ? reject(error) : resolve(result)),
     );
 
     uploadStream.end(audioBuffer);
@@ -202,7 +271,6 @@ export const toTtsCloudinaryPayload = async (audioBuffer, { sessionId, questionI
     const result = await uploadTtsAudioToCloudinary(audioBuffer, { sessionId, questionId });
     return {
       ttsAudioUrl: result.secure_url,
-      ttsAudioPublicId: result.public_id,
       ttsMimeType: "audio/mpeg",
     };
   } catch {
@@ -210,9 +278,11 @@ export const toTtsCloudinaryPayload = async (audioBuffer, { sessionId, questionI
   }
 };
 
+// --- Guide answer audio ---
+
 const getCloudinaryCloudName = () => process.env.CLOUDINARY_CLOUD_NAME || "";
 
-export const isCloudinarySecureUrl = (url) => {
+const isCloudinarySecureUrl = (url) => {
   const cloudName = getCloudinaryCloudName();
   if (!cloudName) {
     return false;
@@ -230,20 +300,20 @@ export const isCloudinarySecureUrl = (url) => {
   }
 };
 
-const spokenAnswerLabel = (questionId) => `"${questionId}"`;
-
-export const isAnswerAudioCloudinaryUrl = (audioUrl) =>
-  isCloudinarySecureUrl(audioUrl) && audioUrl.includes(`/${ANSWER_AUDIO_CLOUDINARY_FOLDER}/`);
-
-export const assertClientCloudinaryAudio = (rawAnswer) => {
-  const { questionId } = rawAnswer;
+export const validateSpokenAnswer = (rawAnswer) => {
+  const label = `"${rawAnswer.questionId}"`;
   const audioUrl = String(rawAnswer.audioUrl || "").trim();
-  const audioPublicId = String(rawAnswer.audioPublicId || "").trim();
-  const label = spokenAnswerLabel(questionId);
 
-  if (!audioUrl || !audioPublicId) {
+  if (String(rawAnswer.answer || "").trim()) {
     throw new AppError(
-      `Spoken question ${label} requires audioUrl and audioPublicId from a client-side Cloudinary upload`,
+      `Spoken question ${label} must be answered with recorded audio, not typed text`,
+      400,
+    );
+  }
+
+  if (!audioUrl) {
+    throw new AppError(
+      `Spoken question ${label} requires audioUrl from a client-side Cloudinary upload`,
       400,
     );
   }
@@ -252,29 +322,21 @@ export const assertClientCloudinaryAudio = (rawAnswer) => {
     throw new AppError(`audioUrl for ${label} must be a valid Cloudinary HTTPS URL`, 400);
   }
 
-  if (!isAnswerAudioCloudinaryUrl(audioUrl)) {
+  if (audioUrl.includes(`/${TTS_AUDIO_CLOUDINARY_FOLDER}/`)) {
     throw new AppError(
-      `audioUrl for ${label} must point to an uploaded answer under "${ANSWER_AUDIO_CLOUDINARY_FOLDER}/"`,
-      400,
-    );
-  }
-
-  if (!audioPublicId.startsWith(`${ANSWER_AUDIO_CLOUDINARY_FOLDER}/`)) {
-    throw new AppError(
-      `audioPublicId for ${label} must be under "${ANSWER_AUDIO_CLOUDINARY_FOLDER}/"`,
+      `audioUrl for ${label} must be a guide recording, not a question audio file`,
       400,
     );
   }
 };
 
-export const inferMimeTypeFromUrl = (audioUrl) => {
+const inferMimeTypeFromUrl = (audioUrl) => {
   const normalized = String(audioUrl || "").toLowerCase();
   if (normalized.includes(".mp3")) return "audio/mpeg";
   if (normalized.includes(".mp4") || normalized.includes(".m4a")) return "audio/mp4";
   return null;
 };
 
-/** Prefer URL extension over client-supplied mimeType to avoid Whisper rejections. */
 export const resolveAnswerAudioMimeType = (audioUrl, clientMimeType) =>
   inferMimeTypeFromUrl(audioUrl) || String(clientMimeType || "").trim() || "audio/webm";
 
@@ -289,59 +351,11 @@ export const fetchAudioBufferFromUrl = async (audioUrl) => {
   return Buffer.from(arrayBuffer);
 };
 
-export const buildExpiredSessionEvaluation = () => ({
-  overallScore: 0,
-  pass: false,
-  feedback: LANGUAGE_TEST_CONFIG.SESSION_EXPIRED_FEEDBACK,
-  issues: ["Session expired without submission"],
-  likelyAiGenerated: false,
-  aiDetectionDetails: "",
-  integrityPassed: true,
-  integrityFlags: [],
-  integrityViolations: [],
-});
-
-export const applyExpiredSessionToLanguageRecord = (languageRecord) => {
-  if (languageRecord.status !== LANGUAGE_TEST_STATUS.IN_PROGRESS) {
-    return false;
-  }
-
-  languageRecord.attempts += 1;
-  languageRecord.lastTestDate = new Date();
-  languageRecord.score = 0;
-  languageRecord.feedback = LANGUAGE_TEST_CONFIG.SESSION_EXPIRED_FEEDBACK;
-  languageRecord.status =
-    languageRecord.attempts >= languageRecord.maxAttempts
-      ? LANGUAGE_TEST_STATUS.LOCKED
-      : LANGUAGE_TEST_STATUS.FAILED;
-
-  return true;
-};
-
-export const assertAllQuestionsAnswered = (questions, rawAnswers) => {
-  const expectedIds = new Set(questions.map((question) => question.id));
-  const submittedIds = new Set(rawAnswers.map((answer) => answer.questionId));
-
-  const allAnswered =
-    expectedIds.size === submittedIds.size &&
-    [...expectedIds].every((questionId) => submittedIds.has(questionId));
-
-  if (!allAnswered) {
-    throw new AppError("All questions must be answered before submission", 400);
+export const assertAudioMeetsMinimumSize = (questionId, audioBuffer) => {
+  if (audioBuffer.length < LANGUAGE_TEST_CONFIG.MIN_AUDIO_BYTES) {
+    throw new AppError(
+      `Audio for "${questionId}" is too short. Please record a complete spoken answer`,
+      400,
+    );
   }
 };
-
-export const addVerifiedLanguage = (guideProfile, language) => {
-  const alreadyVerified = guideProfile.verifiedLanguages.some((verified) =>
-    languagesMatch(verified, language),
-  );
-
-  if (!alreadyVerified) {
-    guideProfile.verifiedLanguages.push(language);
-  }
-};
-
-export const buildGptMessages = (taskPrompt) => [
-  { role: "system", content: GPT_SYSTEM_JSON_ONLY },
-  { role: "user", content: taskPrompt },
-];

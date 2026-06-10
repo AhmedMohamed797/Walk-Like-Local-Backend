@@ -3,38 +3,27 @@ import {
   GUIDE_PROFILE_LIMITS,
   SUPPORTED_GUIDE_LANGUAGES,
 } from "../../../constants/guideProfileConstants.js";
-import { LANGUAGE_TEST_CONFIG } from "../../../constants/languageTestConstants.js";
-import { languagesMatch } from "../languageTest/languageTestHelper.js";
+import {
+  LANGUAGE_TEST_CONFIG,
+  resolveSupportedLanguageCode,
+} from "../../../constants/languageTestConstants.js";
 import { AppError } from "../../../utils/AppError.js";
 
-const supportedLanguageMap = new Map(
-  SUPPORTED_GUIDE_LANGUAGES.map((language) => [language.toLowerCase(), language]),
-);
-
-export const resolveSupportedLanguage = (language) => {
-  const canonical = supportedLanguageMap.get(String(language || "").trim().toLowerCase());
-
-  if (!canonical) {
-    throw new AppError(
-      `Unsupported language: ${language}. Choose from: ${SUPPORTED_GUIDE_LANGUAGES.join(", ")}`,
-      400,
-    );
-  }
-
-  return canonical;
-};
-
-export const normalizeLanguageList = (languages) => {
+export const normalizeLanguageCodeList = (languages) => {
   const seen = new Set();
   const normalized = [];
 
   for (const language of languages) {
-    const canonical = resolveSupportedLanguage(language);
-    const key = canonical.toLowerCase();
+    let code;
+    try {
+      code = resolveSupportedLanguageCode(language);
+    } catch (error) {
+      throw new AppError(error.message, 400);
+    }
 
-    if (!seen.has(key)) {
-      seen.add(key);
-      normalized.push(canonical);
+    if (!seen.has(code)) {
+      seen.add(code);
+      normalized.push(code);
     }
   }
 
@@ -43,17 +32,15 @@ export const normalizeLanguageList = (languages) => {
 
 export const assertCanUpdateLanguages = (guideProfile, nextLanguages) => {
   const removedLanguages = guideProfile.languages.filter(
-    (current) => !nextLanguages.some((next) => languagesMatch(current, next)),
+    (current) => !nextLanguages.includes(current),
   );
 
   for (const language of removedLanguages) {
-    if (guideProfile.verifiedLanguages.some((verified) => languagesMatch(verified, language))) {
+    if (guideProfile.verifiedLanguages.includes(language)) {
       throw new AppError(`Cannot remove verified language: ${language}`, 400);
     }
 
-    const testRecord = guideProfile.languageTests.find((record) =>
-      languagesMatch(record.language, language),
-    );
+    const testRecord = guideProfile.languageTests.find((record) => record.language === language);
 
     if (testRecord?.status === LANGUAGE_TEST_STATUS.IN_PROGRESS) {
       throw new AppError(`Cannot remove language with an active test: ${language}`, 400);
@@ -63,9 +50,7 @@ export const assertCanUpdateLanguages = (guideProfile, nextLanguages) => {
 
 export const syncLanguageTestRecords = (guideProfile, nextLanguages) => {
   for (const language of nextLanguages) {
-    const exists = guideProfile.languageTests.some((record) =>
-      languagesMatch(record.language, language),
-    );
+    const exists = guideProfile.languageTests.some((record) => record.language === language);
 
     if (!exists) {
       guideProfile.languageTests.push({
@@ -81,7 +66,7 @@ export const syncLanguageTestRecords = (guideProfile, nextLanguages) => {
   }
 
   guideProfile.languageTests = guideProfile.languageTests.filter((record) =>
-    nextLanguages.some((language) => languagesMatch(language, record.language)),
+    nextLanguages.includes(record.language),
   );
 };
 

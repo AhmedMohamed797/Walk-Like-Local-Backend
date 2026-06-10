@@ -1,11 +1,11 @@
 export const LANGUAGE_TEST_CONFIG = {
-  PASS_SCORE: 70,
+  PASS_SCORE: 60,
   QUESTIONS_COUNT: 5,
   WRITTEN_QUESTIONS_COUNT: 3,
   SPOKEN_QUESTIONS_COUNT: 2,
   MAX_ATTEMPTS_PER_LANGUAGE: 3,
   MAX_ANSWER_LENGTH: 200,
-  MAX_LANGUAGE_LENGTH: 50,
+  MAX_LANGUAGE_CODE_LENGTH: 10,
   MIN_AUDIO_BYTES: 2_000,
   ANSWER_AUDIO_CLOUDINARY_FOLDER: "language-test/answers",
   TTS_AUDIO_CLOUDINARY_FOLDER: "language-test/tts",
@@ -14,11 +14,44 @@ export const LANGUAGE_TEST_CONFIG = {
   SESSION_EXPIRY_HOURS: 2,
   TTS_VOICE: "nova",
   MIN_SESSION_DURATION_SECONDS: 90,
-  MIN_WRITTEN_QUESTION_SECONDS: 8,
   MAX_TAB_SWITCHES: 2,
   MAX_FOCUS_LOSS_EVENTS: 8,
   MAX_PASTE_EVENTS: 0,
   MAX_INTEGRITY_EVENTS_PER_REQUEST: 50,
+};
+
+export const SUPPORTED_LANGUAGES = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  ar: "Arabic",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  ru: "Russian",
+  tr: "Turkish",
+  nl: "Dutch",
+  hi: "Hindi",
+};
+
+export const SUPPORTED_LANGUAGE_CODES = Object.keys(SUPPORTED_LANGUAGES);
+
+export const getLanguageDisplayName = (code) =>
+  SUPPORTED_LANGUAGES[String(code || "").trim().toLowerCase()] || code;
+
+export const resolveSupportedLanguageCode = (languageCode) => {
+  const code = String(languageCode || "").trim().toLowerCase();
+
+  if (!SUPPORTED_LANGUAGE_CODES.includes(code)) {
+    throw new Error(
+      `Unsupported language code: ${languageCode}. Supported codes: ${SUPPORTED_LANGUAGE_CODES.join(", ")}`,
+    );
+  }
+
+  return code;
 };
 
 export const INTEGRITY_EVENT_TYPE = {
@@ -52,20 +85,3 @@ export const SESSION_STATUS = {
 };
 
 export const SESSION_STATUS_VALUES = Object.values(SESSION_STATUS);
-
-export const LANGUAGE_ISO_CODES = {
-  english: "en",
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  italian: "it",
-  portuguese: "pt",
-  arabic: "ar",
-  chinese: "zh",
-  japanese: "ja",
-  korean: "ko",
-  russian: "ru",
-  turkish: "tr",
-  dutch: "nl",
-  hindi: "hi",
-};
