@@ -44,9 +44,8 @@ export const getEmailVerificationExpiry = () =>
 
 export const buildVerificationLink = (token) => {
   const baseUrl =
-    process.env.API_BASE_URL?.replace(/\/$/, "") ||
-    `http://localhost:${process.env.PORT || 5000}`;
-  return `${baseUrl}/api/v1/auth/verify-email?token=${token}`;
+    process.env.FRONTEND_URL?.replace(/\/$/, "") || "http://localhost:5173";
+  return `${baseUrl}/email-verified?token=${token}`;
 };
 
 //*------------------------------ Core email sender via Brevo HTTP API

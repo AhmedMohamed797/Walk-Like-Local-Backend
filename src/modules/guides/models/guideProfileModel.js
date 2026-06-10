@@ -1,6 +1,47 @@
 import mongoose from "mongoose";
 import { VERIFICATION_STATUS_VALUES } from "../../../constants/verificationStatus.js";
-import { DOCUMENT_VERIFICATION_STATUS_VALUES, LANGUAGE_TEST_STATUS_VALUES, ACCOUNT_VERIFICATION_STATUS_VALUES } from "../../../constants/verificationStatus.js";
+import {
+  DOCUMENT_VERIFICATION_STATUS_VALUES,
+  LANGUAGE_TEST_STATUS_VALUES,
+  ACCOUNT_VERIFICATION_STATUS_VALUES,
+} from "../../../constants/verificationStatus.js";
+import { LANGUAGE_TEST_CONFIG } from "../../../constants/languageTestConstants.js";
+
+const languageTestRecordSchema = new mongoose.Schema(
+  {
+    language: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: LANGUAGE_TEST_STATUS_VALUES,
+      default: "NOT_STARTED",
+    },
+    score: {
+      type: Number,
+      default: null,
+    },
+    attempts: {
+      type: Number,
+      default: 0,
+    },
+    maxAttempts: {
+      type: Number,
+      default: LANGUAGE_TEST_CONFIG.MAX_ATTEMPTS_PER_LANGUAGE,
+    },
+    lastTestDate: {
+      type: Date,
+      default: null,
+    },
+    feedback: {
+      type: String,
+      default: null,
+    },
+  },
+  { _id: true },
+);
 
 const guideProfileSchema = new mongoose.Schema(
   {
@@ -24,10 +65,9 @@ const guideProfileSchema = new mongoose.Schema(
       default: "NOT_SUBMITTED",
     },
 
-    languageTestStatus: {
-      type: String,
-      enum: LANGUAGE_TEST_STATUS_VALUES,
-      default: "NOT_STARTED",
+    languageTests: {
+      type: [languageTestRecordSchema],
+      default: [],
     },
 
     accountVerificationStatus: {
@@ -89,9 +129,22 @@ const guideProfileSchema = new mongoose.Schema(
       },
     ],
 
+    experience: {
+      year: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      photo: {
+        secureUrl: String,
+        publicId: String,
+      },
+    },
+
     languages: [
       {
         type: String,
+        trim: true,
       },
     ],
   },
