@@ -41,3 +41,12 @@ export const PASSPORT_VERIFICATION_STATUS = {
 };
 
 export const PASSPORT_VERIFICATION_STATUS_VALUES = Object.values(PASSPORT_VERIFICATION_STATUS);
+
+export const GUIDE_DOCUMENT_FIELDS = {
+  NATIONAL_ID: 'nationalId',
+  PROFILE_PHOTO: 'profilePhoto',
+  TOURISM_LICENSE: 'tourismLicense',
+  INTRODUCTION_VIDEO: 'introductionVideo',
+};
+
+export const GUIDE_DOCUMENT_FIELD_VALUES = Object.values(GUIDE_DOCUMENT_FIELDS);

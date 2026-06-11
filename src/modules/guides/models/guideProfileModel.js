@@ -6,6 +6,7 @@ import {
   ACCOUNT_VERIFICATION_STATUS_VALUES,
 } from "../../../constants/verificationStatus.js";
 import { LANGUAGE_TEST_CONFIG } from "../../../constants/languageTestConstants.js";
+import { GUIDE_DOCUMENT_FIELD_VALUES } from "../../../constants/verificationStatus.js";
 
 const languageTestRecordSchema = new mongoose.Schema(
   {
@@ -86,6 +87,27 @@ const guideProfileSchema = new mongoose.Schema(
     rejectionReason: {
       type: String,
       default: null,
+    },
+
+    verificationReview: {
+      rejectedFields: {
+        type: [String],
+        enum: GUIDE_DOCUMENT_FIELD_VALUES,
+        default: [],
+      },
+      rejectionReason: {
+        type: String,
+        default: null,
+      },
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      reviewedAt: {
+        type: Date,
+        default: null,
+      },
     },
 
     verifiedAt: {

@@ -1,6 +1,6 @@
 import GuideProfile from "../models/guideProfileModel.js";
 import { AppError } from "../../../utils/AppError.js";
-import { DOCUMENT_VERIFICATION_STATUS } from "../../../constants/verificationStatus.js";
+import { DOCUMENT_VERIFICATION_STATUS, GUIDE_DOCUMENT_FIELD_VALUES } from "../../../constants/verificationStatus.js";
 import { updateGuideVerificationStatus } from "./guideVerificationHelper.js";
 
 export const submitVerificationDocuments = async (userId, verificationData) => {
@@ -40,6 +40,8 @@ export const getVerificationStatus = async (userId) => {
 
   return {
     documentVerificationStatus: guideProfile.documentVerificationStatus,
+    rejectedFields: guideProfile.verificationReview.rejectedFields,
+    rejectionReason: guideProfile.verificationReview.rejectionReason,
     languages: guideProfile.languages,
     languageTests: guideProfile.languageTests.map((record) => ({
       language: record.language,
@@ -52,7 +54,6 @@ export const getVerificationStatus = async (userId) => {
     })),
     accountVerificationStatus: guideProfile.accountVerificationStatus,
     verifiedLanguages: guideProfile.verifiedLanguages,
-    rejectionReason: guideProfile.rejectionReason,
   };
 };
 
@@ -64,25 +65,46 @@ export const resubmitVerificationDocuments = async (userId, verificationData) =>
     throw new AppError("Documents can only be resubmitted after rejection", 400);
   }
 
-  guideProfile.nationalId = {
-    secureUrl: verificationData.nationalId.secureUrl,
-    publicId: verificationData.nationalId.publicId,
-  };
-  guideProfile.profilePhoto = {
-    secureUrl: verificationData.profilePhoto.secureUrl,
-    publicId: verificationData.profilePhoto.publicId,
-  };
-  guideProfile.tourismLicense = {
-    secureUrl: verificationData.tourismLicense.secureUrl,
-    publicId: verificationData.tourismLicense.publicId,
-  };
-  guideProfile.introductionVideo = {
-    secureUrl: verificationData.introductionVideo.secureUrl,
-    publicId: verificationData.introductionVideo.publicId,
-  };
-  guideProfile.nationality = verificationData.nationality;
+  const rejectedFields = guideProfile.verificationReview.rejectedFields;
+
+  if (!rejectedFields || rejectedFields.length === 0) {
+    throw new AppError("No rejected fields found for resubmission", 400);
+  }
+
+  const submittedFields = GUIDE_DOCUMENT_FIELD_VALUES.filter(
+    (field) => verificationData[field] !== undefined,
+  );
+
+  if (submittedFields.length === 0) {
+    throw new AppError("At least one rejected document must be provided", 400);
+  }
+
+  const invalidFields = submittedFields.filter(
+    (field) => !rejectedFields.includes(field),
+  );
+
+  if (invalidFields.length > 0) {
+    throw new AppError(
+      `Cannot resubmit approved documents: ${invalidFields.join(", ")}`,
+      400,
+    );
+  }
+
+  submittedFields.forEach((field) => {
+    guideProfile[field] = {
+      secureUrl: verificationData[field].secureUrl,
+      publicId: verificationData[field].publicId,
+    };
+  });
+
   guideProfile.documentVerificationStatus = DOCUMENT_VERIFICATION_STATUS.PENDING;
   guideProfile.rejectionReason = null;
+  guideProfile.verificationReview = {
+    rejectedFields: [],
+    rejectionReason: null,
+    reviewedBy: null,
+    reviewedAt: null,
+  };
 
   updateGuideVerificationStatus(guideProfile);
 

@@ -1,4 +1,5 @@
 import { body, validationResult } from "express-validator";
+import { GUIDE_DOCUMENT_FIELD_VALUES } from "../../../constants/verificationStatus.js";
 
 export const handleValidation = (req, res, next) => {
   const errors = validationResult(req);
@@ -24,12 +25,26 @@ const cloudinaryMediaRules = (fieldName) => [
     .withMessage(`${fieldName} publicId is required`),
 ];
 
+const cloudinaryMediaRulesOptional = (fieldName) => [
+  body(`${fieldName}.secureUrl`)
+    .if((value, { req }) => req.body[fieldName] !== undefined)
+    .trim()
+    .notEmpty()
+    .withMessage(`${fieldName} secureUrl is required`)
+    .isURL()
+    .withMessage(`${fieldName} secureUrl must be a valid URL`),
+  body(`${fieldName}.publicId`)
+    .if((value, { req }) => req.body[fieldName] !== undefined)
+    .trim()
+    .notEmpty()
+    .withMessage(`${fieldName} publicId is required`),
+];
+
 export const submitVerificationValidation = [
   body("nationality")
     .trim()
     .notEmpty()
     .withMessage("Nationality is required"),
-
   ...cloudinaryMediaRules("nationalId"),
   ...cloudinaryMediaRules("profilePhoto"),
   ...cloudinaryMediaRules("tourismLicense"),
@@ -37,13 +52,19 @@ export const submitVerificationValidation = [
 ];
 
 export const resubmitVerificationValidation = [
-  body("nationality")
-    .trim()
-    .notEmpty()
-    .withMessage("Nationality is required"),
+  body()
+    .custom((value) => {
+      const hasAtLeastOne = GUIDE_DOCUMENT_FIELD_VALUES.some(
+        (field) => value[field] !== undefined,
+      );
+      if (!hasAtLeastOne) {
+        throw new Error("At least one rejected document must be provided");
+      }
+      return true;
+    }),
 
-  ...cloudinaryMediaRules("nationalId"),
-  ...cloudinaryMediaRules("profilePhoto"),
-  ...cloudinaryMediaRules("tourismLicense"),
-  ...cloudinaryMediaRules("introductionVideo"),
+  ...cloudinaryMediaRulesOptional("nationalId"),
+  ...cloudinaryMediaRulesOptional("profilePhoto"),
+  ...cloudinaryMediaRulesOptional("tourismLicense"),
+  ...cloudinaryMediaRulesOptional("introductionVideo"),
 ];
