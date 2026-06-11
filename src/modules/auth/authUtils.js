@@ -1,6 +1,6 @@
 ﻿import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 
 //*--------------- Global vars for expiry times
 const RESET_CODE_EXPIRY_MS = 10 * 60 * 1000;
@@ -35,17 +35,19 @@ export const generateResetCode = () =>
 export const hashValue = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
 
-export const compareHashedValue = (plain, hashed) => hashValue(plain) === hashed;
+export const compareHashedValue = (plain, hashed) =>
+  hashValue(plain) === hashed;
 
-export const getResetCodeExpiry = () => new Date(Date.now() + RESET_CODE_EXPIRY_MS);
+export const getResetCodeExpiry = () =>
+  new Date(Date.now() + RESET_CODE_EXPIRY_MS);
 
 export const getEmailVerificationExpiry = () =>
   new Date(Date.now() + EMAIL_VERIFICATION_EXPIRY_MS);
 
 export const buildVerificationLink = (token) => {
-  const baseUrl =
-    process.env.FRONTEND_URL?.replace(/\/$/, "") || "http://localhost:5173";
-  return `${baseUrl}/email-verified?token=${token}`;
+  process.env.API_BASE_URL?.replace(/\/$/, "") ||
+    `http://localhost:${process.env.PORT || 5000}`;
+  return `${baseUrl}/api/v1/auth/verify-email?token=${token}`;
 };
 
 //*------------------------------ Core email sender via Brevo HTTP API
@@ -63,7 +65,9 @@ const sendEmail = async ({ to, subject, text, html }) => {
 
   const senderEmail = process.env.EMAIL_FROM || process.env.SMTP_USER;
   if (!senderEmail) {
-    throw new Error("No sender email configured. Set EMAIL_FROM in your environment variables.");
+    throw new Error(
+      "No sender email configured. Set EMAIL_FROM in your environment variables.",
+    );
   }
 
   const body = {
@@ -77,7 +81,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
   const response = await fetch(BREVO_API_URL, {
     method: "POST",
     headers: {
-      "accept": "application/json",
+      accept: "application/json",
       "content-type": "application/json",
       "api-key": BREVO_API_KEY,
     },

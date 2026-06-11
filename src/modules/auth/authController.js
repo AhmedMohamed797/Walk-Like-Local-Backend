@@ -169,7 +169,7 @@ export const googleOAuthCallback = (req, res, next) => {
 
 export const verifyEmail = asyncHandler(async (req, res) => {
   await authService.verifyEmail(req.query.token);
-  return res.redirect(`${getFrontendUrl()}/signup?verified=true`);
+  return res.redirect(`${getFrontendUrl()}/email-verified`);
 });
 
 export const resendVerificationEmail = asyncHandler(async (req, res) => {
