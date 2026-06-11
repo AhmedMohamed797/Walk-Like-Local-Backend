@@ -45,7 +45,8 @@ export const getEmailVerificationExpiry = () =>
   new Date(Date.now() + EMAIL_VERIFICATION_EXPIRY_MS);
 
 export const buildVerificationLink = (token) => {
-  process.env.API_BASE_URL?.replace(/\/$/, "") ||
+  const baseUrl =
+    process.env.API_BASE_URL?.replace(/\/$/, "") ||
     `http://localhost:${process.env.PORT || 5000}`;
   return `${baseUrl}/api/v1/auth/verify-email?token=${token}`;
 };
