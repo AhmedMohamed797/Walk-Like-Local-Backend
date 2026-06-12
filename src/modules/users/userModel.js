@@ -86,6 +86,22 @@ const userSchema = new mongoose.Schema(
       default: "ACTIVE",
     },
 
+    statusReason: {
+      type: String,
+      default: null,
+    },
+
+    statusUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+
+    statusUpdatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     lastLoginAt: {
       type: Date,
       default: null,

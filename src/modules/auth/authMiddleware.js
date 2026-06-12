@@ -1,5 +1,7 @@
 ﻿import User from "../users/userModel.js";
 import jwt from "jsonwebtoken";
+import { USER_STATUS } from "../../constants/userStatus.js";
+import { ROLES } from "../../constants/roles.js";
 
 export const authMiddleware = async (req, res, next) => {
   let token;
@@ -31,6 +33,23 @@ export const authMiddleware = async (req, res, next) => {
       message: "The user belonging to this token does no longer exist",
     });
   }
+
+  if (currentUser.role !== ROLES.ADMIN) {
+    if (currentUser.status === USER_STATUS.SUSPENDED) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been suspended. Please contact support",
+      });
+    }
+
+    if (currentUser.status === USER_STATUS.BANNED) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been banned. Please contact support",
+      });
+    }
+  }
+
   req.user = currentUser;
   next();
 };
