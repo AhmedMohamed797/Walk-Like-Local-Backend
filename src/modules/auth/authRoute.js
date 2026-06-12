@@ -29,6 +29,7 @@ import {
 } from "./authValidation.js";
 import { authMiddleware } from "./authMiddleware.js";
 import {
+  loginRateLimiter,
   resendVerificationRateLimiter,
   resendResetCodeRateLimiter,
   verificationResendCooldown,
@@ -39,7 +40,7 @@ const router = Router();
 
 router.post("/register-guide", registerGuideValidation, handleValidation, registerGuide);
 router.post("/register-tourist", registerTouristValidation, handleValidation, registerTourist);
-router.post("/login", loginValidation, handleValidation, login);
+router.post("/login", loginRateLimiter, loginValidation, handleValidation, login);
 router.post("/google", googleAuthValidation, handleValidation, googleAuth);
 
 router.get("/google", googleOAuthStartValidation, handleValidation, startGoogleOAuth);

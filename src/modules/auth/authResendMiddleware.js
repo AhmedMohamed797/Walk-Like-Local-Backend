@@ -23,6 +23,9 @@ export const resendVerificationRateLimiter = createEmailResendRateLimiter(5, 15 
 /** IP-based limit for password reset code resend (5 requests / 15 min). */
 export const resendResetCodeRateLimiter = createEmailResendRateLimiter(5, 15 * 60 * 1000);
 
+/** IP-based limit for login (20 requests / 15 min). */
+export const loginRateLimiter = createEmailResendRateLimiter(20, 15 * 60 * 1000);
+
 const getRetryAfterSeconds = (expiresAt) => {
   if (!expiresAt) return null;
 
