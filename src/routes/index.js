@@ -6,6 +6,7 @@ import languageTestRoutes from "../modules/guides/languageTest/languageTestRoute
 import touristProfileRoutes from "../modules/tourists/profile/touristProfileRoute.js";
 import touristVerificationRoutes from "../modules/tourists/verification/touristVerificationRoute.js";
 import adminVerificationRoutes from "../modules/admin/verification/adminVerificationRoute.js";
+import tourRoutes from "../modules/tours/tourRoute.js";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use("/guides", languageTestRoutes);
 router.use("/tourists", touristProfileRoutes);
 router.use("/tourists", touristVerificationRoutes);
 router.use("/admin", adminVerificationRoutes);
+router.use("/tours", tourRoutes);
 
 router.get("/health", (req, res) => {
   res.json({ success: true, message: "Server is running" });

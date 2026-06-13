@@ -1,0 +1,50 @@
+export const TOUR_STATUS = {
+  ACTIVE: "ACTIVE",
+  INACTIVE: "INACTIVE",
+};
+
+export const TOUR_STATUS_VALUES = Object.values(TOUR_STATUS);
+
+export const SUPPORTED_GROUP_TYPES = {
+  PRIVATE: "PRIVATE",
+  SMALL_GROUP: "SMALL_GROUP",
+  LARGE_GROUP: "LARGE_GROUP",
+};
+
+export const SUPPORTED_GROUP_TYPE_VALUES = Object.values(SUPPORTED_GROUP_TYPES);
+
+export const GROUP_TYPE_PARTICIPANTS = {
+  PRIVATE: 1,
+  SMALL_GROUP: { min: 2, max: 4 },
+  LARGE_GROUP: { min: 5, max: 8 },
+};
+
+export const TOUR_LIMITS = {
+  MAX_TITLE_LENGTH: 100,
+  MAX_DESCRIPTION_LENGTH: 2000,
+  MAX_DESTINATION_LENGTH: 100,
+  MAX_MEETING_POINT_LENGTH: 200,
+  MAX_DURATION_LENGTH: 50,
+  MAX_ACTIVITIES: 10,
+  MAX_ACTIVITY_NAME_LENGTH: 100,
+  MAX_ACTIVITY_DESCRIPTION_LENGTH: 500,
+  MAX_GALLERY_IMAGES: 10,
+  MAX_SLOTS_PER_TOUR: 30,
+  MIN_PRICING: 0,
+};
+
+export const TOUR_SORT_FIELDS = {
+  createdAt: "createdAt",
+  duration: "duration",
+  title: "title",
+  price: "price",
+};
+
+export const TOUR_SORT_FIELD_VALUES = Object.values(TOUR_SORT_FIELDS);
+
+export const TOUR_DEFAULTS = {
+  STATUS: TOUR_STATUS.INACTIVE,
+  SLOT_IS_BOOKED: false,
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 12,
+};
