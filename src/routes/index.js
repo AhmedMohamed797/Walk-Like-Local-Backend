@@ -7,6 +7,8 @@ import touristProfileRoutes from "../modules/tourists/profile/touristProfileRout
 import touristVerificationRoutes from "../modules/tourists/verification/touristVerificationRoute.js";
 import adminVerificationRoutes from "../modules/admin/verification/adminVerificationRoute.js";
 import tourRoutes from "../modules/tours/tourRoute.js";
+import touristBookingRoutes from "../modules/tourists/bookings/touristBookingRoute.js";
+import guideBookingRoutes from "../modules/guides/bookings/guideBookingRoute.js";
 import adminUserManagementRoutes from "../modules/admin/user-management/adminUserRoute.js";
 
 const router = Router();
@@ -16,9 +18,11 @@ router.use("/guides", guideProfileRoutes);
 router.use("/guides", guideVerificationRoutes);
 router.use("/guides", languageTestRoutes);
 router.use("/tourists", touristProfileRoutes);
+router.use("/tourists/bookings", touristBookingRoutes);
 router.use("/tourists", touristVerificationRoutes);
 router.use("/admin", adminVerificationRoutes);
 router.use("/tours", tourRoutes);
+router.use("/guides/bookings", guideBookingRoutes);
 router.use("/admin", adminUserManagementRoutes);
 
 router.get("/health", (req, res) => {
