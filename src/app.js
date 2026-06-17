@@ -8,10 +8,17 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 import routes from "./routes/index.js";
 import passport from "passport";
 import { configureGooglePassport } from "./modules/auth/authController.js";
+import { handleStripeWebhook } from "./modules/payments/webhooks/stripeWebhookController.js";
 
 configureGooglePassport();
 
 const app = express();
+
+app.post("/api/v1/payments/webhook", express.raw({ type: "application/json" }), (req, res, next) => {
+  req.rawBody = req.body;
+  req.body = JSON.parse(req.body);
+  next();
+}, handleStripeWebhook);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
