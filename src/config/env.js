@@ -16,6 +16,7 @@ const config = {
   nodeEnv: process.env.NODE_ENV,
   mongodbUri: process.env.MONGODB_URI,
   frontendUrl: process.env.FRONTEND_URL,
+  apiBaseUrl: process.env.API_BASE_URL,
 };
 
 export default config;
