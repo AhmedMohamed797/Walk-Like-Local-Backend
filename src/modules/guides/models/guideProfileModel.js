@@ -176,6 +176,17 @@ const guideProfileSchema = new mongoose.Schema(
       min: 0,
       max: 5,
     },
+
+    payoutProfile: {
+      stripeAccountId: {
+        type: String,
+        default: null,
+      },
+      isPayoutReady: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   {
     timestamps: true,

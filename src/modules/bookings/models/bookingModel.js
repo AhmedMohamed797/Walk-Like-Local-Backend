@@ -81,6 +81,16 @@ const pricingSnapshotSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    platformFee: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    guideEarnings: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { _id: false },
 );

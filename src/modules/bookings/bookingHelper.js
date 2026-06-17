@@ -7,6 +7,7 @@ import {
   BOOKING_STATUS,
   COUPON_STATUS,
 } from "../../constants/bookingConstants.js";
+import { PAYMENT_DEFAULTS } from "../../constants/paymentConstants.js";
 import { SUPPORTED_GROUP_TYPES } from "../../constants/tourConstants.js";
 import { AppError } from "../../utils/AppError.js";
 import logger from "../../utils/logger.js";
@@ -82,6 +83,8 @@ export const calculatePricing = (tour, groupType, selectedActivities, discountPe
   const subtotal = tourBasePrice + activitiesTotal;
   const discountAmount = subtotal * (discountPercentage / 100);
   const totalPrice = subtotal - discountAmount;
+  const platformFee = totalPrice * (PAYMENT_DEFAULTS.PLATFORM_FEE_PERCENTAGE / 100);
+  const guideEarnings = totalPrice - platformFee;
 
   return {
     tourBasePrice,
@@ -90,6 +93,8 @@ export const calculatePricing = (tour, groupType, selectedActivities, discountPe
     discountPercentage,
     discountAmount,
     totalPrice,
+    platformFee,
+    guideEarnings,
   };
 };
 

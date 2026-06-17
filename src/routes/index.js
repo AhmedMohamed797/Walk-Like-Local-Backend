@@ -10,6 +10,7 @@ import tourRoutes from "../modules/tours/tourRoute.js";
 import touristBookingRoutes from "../modules/tourists/bookings/touristBookingRoute.js";
 import guideBookingRoutes from "../modules/guides/bookings/guideBookingRoute.js";
 import adminUserManagementRoutes from "../modules/admin/user-management/adminUserRoute.js";
+import paymentRoutes from "../modules/payments/paymentRoute.js";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use("/admin", adminVerificationRoutes);
 router.use("/tours", tourRoutes);
 router.use("/guides/bookings", guideBookingRoutes);
 router.use("/admin", adminUserManagementRoutes);
+router.use("/payments", paymentRoutes);
 
 router.get("/health", (req, res) => {
   res.json({ success: true, message: "Server is running" });

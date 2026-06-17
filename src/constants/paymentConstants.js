@@ -1,0 +1,13 @@
+export const PAYMENT_STATUS = {
+  PENDING: "PENDING",
+  PAID: "PAID",
+  FAILED: "FAILED",
+  REFUNDED: "REFUNDED",
+};
+
+export const PAYMENT_STATUS_VALUES = Object.values(PAYMENT_STATUS);
+
+export const PAYMENT_DEFAULTS = {
+  CURRENCY: "usd",
+  PLATFORM_FEE_PERCENTAGE: 10,
+};
