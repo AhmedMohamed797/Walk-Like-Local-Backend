@@ -17,3 +17,10 @@ export const checkoutValidation = [
     .withMessage("Invalid booking ID"),
   handleValidation,
 ];
+
+export const paymentStatusValidation = [
+  param("bookingId")
+    .isMongoId()
+    .withMessage("Invalid booking ID"),
+  handleValidation,
+];

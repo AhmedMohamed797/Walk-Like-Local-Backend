@@ -69,16 +69,21 @@ export const getMyBookings = asyncHandler(async (req, res) => {
 export const cancelBookingByTourist = asyncHandler(async (req, res) => {
   if (!ensureTourist(req, res)) return;
 
-  const booking = await bookingService.cancelBookingByTourist(
+  const { booking, refundResult } = await bookingService.cancelBookingByTourist(
     req.user._id,
     req.params.id,
     req.body.reason,
   );
 
+  const refundWarning = refundResult && !refundResult.refundProcessed
+    ? " Refund processing failed and will be reviewed manually."
+    : "";
+
   return res.json({
     success: true,
-    message: "Booking cancelled successfully",
+    message: `Booking cancelled successfully${refundWarning}`,
     data: booking,
+    refundResult,
   });
 });
 
@@ -105,15 +110,20 @@ export const getGuideBookings = asyncHandler(async (req, res) => {
 export const cancelBookingByGuide = asyncHandler(async (req, res) => {
   if (!ensureGuide(req, res)) return;
 
-  const { booking, coupon } = await bookingService.cancelBookingByGuide(
+  const { booking, coupon, refundResult } = await bookingService.cancelBookingByGuide(
     req.user._id,
     req.params.id,
     req.body.reason,
   );
 
+  const refundWarning = refundResult && !refundResult.refundProcessed
+    ? " Refund processing failed and will be reviewed manually."
+    : "";
+
   return res.json({
     success: true,
-    message: "Booking cancelled. Coupon issued to tourist.",
+    message: `Booking cancelled. Coupon issued to tourist${refundWarning}`,
     data: { booking, coupon },
+    refundResult,
   });
 });

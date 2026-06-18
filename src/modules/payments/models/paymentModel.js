@@ -47,6 +47,10 @@ const paymentSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    refundNeedsReview: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

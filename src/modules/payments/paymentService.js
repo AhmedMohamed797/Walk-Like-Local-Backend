@@ -1,11 +1,14 @@
 import Booking from "../bookings/models/bookingModel.js";
 import Payment from "./models/paymentModel.js";
+import User from "../users/userModel.js";
 import stripe from "../../config/stripe.js";
+import logger from "../../utils/logger.js";
 import { AppError } from "../../utils/AppError.js";
 import { ROLES } from "../../constants/roles.js";
 import { BOOKING_STATUS } from "../../constants/bookingConstants.js";
 import { PAYMENT_STATUS, PAYMENT_DEFAULTS } from "../../constants/paymentConstants.js";
 import { markCouponAsUsed } from "../bookings/bookingHelper.js";
+import { sendPaymentConfirmationEmail } from "./emailService.js";
 
 export const createCheckoutSession = async (touristId, bookingId) => {
   const booking = await Booking.findById(bookingId);
@@ -67,6 +70,7 @@ export const createCheckoutSession = async (touristId, bookingId) => {
       bookingId: booking._id.toString(),
       touristId: touristId.toString(),
     },
+    expires_at: Math.floor(booking.paymentExpiresAt.getTime() / 1000),
   });
 
   const payment = await Payment.create({
@@ -92,9 +96,24 @@ export const handleCheckoutSessionCompleted = async (session) => {
     throw new AppError("Payment not found for this session", 404);
   }
 
+  if (payment.status === PAYMENT_STATUS.PAID) {
+    logger.info(`Payment ${payment._id} already processed, skipping duplicate`);
+    const booking = await Booking.findById(bookingId);
+    return { payment, booking };
+  }
+
   const booking = await Booking.findById(bookingId);
   if (!booking) {
     throw new AppError("Booking not found", 404);
+  }
+
+  if (booking.status === BOOKING_STATUS.ACTIVE) {
+    logger.info(`Booking ${booking._id} already active, skipping duplicate processing`);
+    payment.status = PAYMENT_STATUS.PAID;
+    payment.paidAt = payment.paidAt || new Date();
+    payment.stripePaymentIntentId = session.payment_intent;
+    await payment.save();
+    return { payment, booking };
   }
 
   payment.status = PAYMENT_STATUS.PAID;
@@ -107,6 +126,11 @@ export const handleCheckoutSessionCompleted = async (session) => {
 
   if (booking.appliedCouponId) {
     await markCouponAsUsed(booking.appliedCouponId);
+  }
+
+  const tourist = await User.findById(booking.touristId);
+  if (tourist) {
+    await sendPaymentConfirmationEmail(tourist.email, booking, payment);
   }
 
   return { payment, booking };
@@ -122,6 +146,30 @@ export const handlePaymentIntentFailed = async (paymentIntent) => {
   await payment.save();
 };
 
+export const getPaymentStatus = async (touristId, bookingId) => {
+  const booking = await Booking.findById(bookingId);
+  if (!booking) {
+    throw new AppError("Booking not found", 404);
+  }
+
+  if (booking.touristId.toString() !== touristId.toString()) {
+    throw new AppError("You are not authorized to view this payment status", 403);
+  }
+
+  const payment = await Payment.findOne({ bookingId: booking._id });
+  if (!payment) {
+    throw new AppError("Payment not found for this booking", 404);
+  }
+
+  return {
+    bookingStatus: booking.status,
+    paymentStatus: payment.status,
+    stripeSessionId: payment.stripeSessionId,
+    paymentIntentId: payment.stripePaymentIntentId,
+    paidAt: payment.paidAt,
+  };
+};
+
 export const expirePendingPayments = async () => {
   const expiredPayments = await Payment.find({
     status: PAYMENT_STATUS.PENDING,
@@ -133,5 +181,48 @@ export const expirePendingPayments = async () => {
       payment.status = PAYMENT_STATUS.FAILED;
       await payment.save();
     }
+  }
+};
+
+export const processRefund = async (bookingId, refundAmount, isFullRefund = false) => {
+  const payment = await Payment.findOne({ bookingId, status: PAYMENT_STATUS.PAID });
+
+  if (!payment) {
+    logger.warn(`No PAID payment found for booking ${bookingId}, skipping Stripe refund`);
+    return { refundProcessed: false, reason: "NO_PAID_PAYMENT" };
+  }
+
+  if (!payment.stripePaymentIntentId) {
+    logger.warn(`Payment ${payment._id} has no stripePaymentIntentId, skipping Stripe refund`);
+    return { refundProcessed: false, reason: "NO_PAYMENT_INTENT" };
+  }
+
+  if (payment.status === PAYMENT_STATUS.REFUNDED) {
+    logger.info(`Payment ${payment._id} already refunded, skipping duplicate refund`);
+    return { refundProcessed: false, reason: "ALREADY_REFUNDED" };
+  }
+
+  try {
+    const refundParams = {
+      payment_intent: payment.stripePaymentIntentId,
+    };
+
+    if (!isFullRefund && refundAmount > 0) {
+      refundParams.amount = Math.round(refundAmount * 100);
+    }
+
+    await stripe.refunds.create(refundParams);
+
+    payment.status = PAYMENT_STATUS.REFUNDED;
+    payment.refundedAt = new Date();
+    await payment.save();
+
+    logger.info(`Stripe refund processed for payment ${payment._id}, amount: ${isFullRefund ? "full" : refundAmount}`);
+    return { refundProcessed: true, payment };
+  } catch (err) {
+    logger.error(`Stripe refund failed for payment ${payment._id}: ${err.message}`);
+    payment.refundNeedsReview = true;
+    await payment.save();
+    return { refundProcessed: false, reason: "STRIPE_REFUND_FAILED", error: err.message };
   }
 };
