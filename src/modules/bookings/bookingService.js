@@ -1,6 +1,7 @@
 import Booking from "./models/bookingModel.js";
 import Coupon from "./models/couponModel.js";
 import Tour from "../tours/models/tourModel.js";
+import User from "../users/userModel.js";
 import { AppError } from "../../utils/AppError.js";
 import { ROLES } from "../../constants/roles.js";
 import { TOUR_STATUS } from "../../constants/tourConstants.js";
@@ -25,6 +26,13 @@ import {
   decreaseGuideRating,
   expireBooking,
 } from "./bookingHelper.js";
+import { processRefund } from "../payments/paymentService.js";
+import {
+  sendTouristCancellationEmail,
+  sendGuideCancellationEmail,
+  sendBookingExpiredEmail,
+  sendBookingCompletedEmail,
+} from "../payments/emailService.js";
 
 const getBookingOrThrow = async (bookingId) => {
   const booking = await Booking.findById(bookingId);
@@ -265,7 +273,17 @@ export const cancelBookingByTourist = async (touristId, bookingId, reason) => {
   await booking.save();
   await releaseTourSlot(booking.tourId, booking.slot.slotId);
 
-  return booking;
+  let refundResult = null;
+  if (refundAmount > 0) {
+    refundResult = await processRefund(bookingId, refundAmount, false);
+  }
+
+  const tourist = await User.findById(booking.touristId);
+  if (tourist) {
+    await sendTouristCancellationEmail(tourist.email, booking, refundPercentage, refundAmount);
+  }
+
+  return { booking, refundResult };
 };
 
 export const cancelBookingByGuide = async (guideId, bookingId, reason) => {
@@ -303,7 +321,14 @@ export const cancelBookingByGuide = async (guideId, bookingId, reason) => {
   await releaseTourSlot(booking.tourId, booking.slot.slotId);
   await decreaseGuideRating(guideId);
 
-  return { booking, coupon };
+  const refundResult = await processRefund(bookingId, refundAmount, true);
+
+  const tourist = await User.findById(booking.touristId);
+  if (tourist) {
+    await sendGuideCancellationEmail(tourist.email, booking, coupon);
+  }
+
+  return { booking, coupon, refundResult };
 };
 
 export const processExpiredBookings = async () => {
@@ -314,6 +339,11 @@ export const processExpiredBookings = async () => {
 
   for (const booking of expiredBookings) {
     await expireBooking(booking);
+
+    const tourist = await User.findById(booking.touristId);
+    if (tourist) {
+      await sendBookingExpiredEmail(tourist.email, booking);
+    }
   }
 
   return expiredBookings.length;
@@ -332,6 +362,11 @@ export const processCompletedBookings = async () => {
       booking.status = BOOKING_STATUS.COMPLETED;
       await booking.save();
       completedCount += 1;
+
+      const tourist = await User.findById(booking.touristId);
+      if (tourist) {
+        await sendBookingCompletedEmail(tourist.email, booking);
+      }
     }
   }
 

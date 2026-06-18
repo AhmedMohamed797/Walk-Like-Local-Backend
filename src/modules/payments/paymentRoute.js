@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { authMiddleware } from "../auth/authMiddleware.js";
-import { createCheckoutSession, handleSuccessRedirect, handleCancelRedirect } from "../payments/paymentController.js";
-import { checkoutValidation } from "../payments/paymentValidation.js";
+import { createCheckoutSession, handleSuccessRedirect, handleCancelRedirect, getPaymentStatus } from "../payments/paymentController.js";
+import { checkoutValidation, paymentStatusValidation } from "../payments/paymentValidation.js";
+import checkoutRateLimiter from "../payments/checkoutRateLimiter.js";
 
 const router = Router();
 
@@ -12,7 +13,15 @@ router.post(
   "/checkout/:bookingId",
   authMiddleware,
   checkoutValidation,
+  checkoutRateLimiter,
   createCheckoutSession,
+);
+
+router.get(
+  "/status/:bookingId",
+  authMiddleware,
+  paymentStatusValidation,
+  getPaymentStatus,
 );
 
 export default router;

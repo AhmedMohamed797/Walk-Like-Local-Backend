@@ -1,0 +1,9 @@
+process.env.STRIPE_SECRET_KEY = "sk_test_mock_key_for_jest";
+process.env.BREVO_API_KEY = "test-brevo-key";
+process.env.EMAIL_FROM = "noreply@test.com";
+process.env.FRONTEND_URL = "http://localhost:5173";
+process.env.API_BASE_URL = "http://localhost:5000";
+process.env.PORT = "5000";
+process.env.NODE_ENV = "test";
+process.env.MONGODB_URI = "mongodb://127.0.0.1:27017/walk-like-local-test";
+process.env.JWT_SECRET = "test-jwt-secret";

@@ -3,6 +3,23 @@ import { asyncHandler } from "../../middlewares/error.middleware.js";
 import { ROLES } from "../../constants/roles.js";
 import config from "../../config/env.js";
 import stripe from "../../config/stripe.js";
+import logger from "../../utils/logger.js";
+
+export const getPaymentStatus = asyncHandler(async (req, res) => {
+  if (req.user.role !== ROLES.TOURIST) {
+    return res.status(403).json({
+      success: false,
+      message: "Only tourists can view payment status",
+    });
+  }
+
+  const result = await paymentService.getPaymentStatus(req.user._id, req.params.bookingId);
+
+  return res.json({
+    success: true,
+    data: result,
+  });
+});
 
 export const createCheckoutSession = asyncHandler(async (req, res) => {
   if (req.user.role !== ROLES.TOURIST) {
@@ -29,6 +46,11 @@ export const handleSuccessRedirect = asyncHandler(async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     if (session.payment_status === "paid") {
+      try {
+        await paymentService.handleCheckoutSessionCompleted(session);
+      } catch (err) {
+        logger.warn(`Success redirect fallback processing failed: ${err.message}`);
+      }
       return res.redirect(`${config.frontendUrl}/payment/success?session_id=${sessionId}`);
     }
     return res.redirect(`${config.frontendUrl}/payment/cancel`);

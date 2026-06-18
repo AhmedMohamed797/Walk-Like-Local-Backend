@@ -5,7 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "cross-env NODE_OPTIONS='--experimental-vm-modules' jest"
   },
   "type": "module",
   "dependencies": {
@@ -27,5 +28,10 @@
     "passport": "^0.7.0",
     "passport-google-oauth2": "^0.2.0",
     "stripe": "^22.2.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "cross-env": "^10.1.0",
+    "jest": "^30.4.2"
   }
 }
