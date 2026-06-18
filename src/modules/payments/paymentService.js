@@ -70,7 +70,7 @@ export const createCheckoutSession = async (touristId, bookingId) => {
       bookingId: booking._id.toString(),
       touristId: touristId.toString(),
     },
-    expires_at: Math.floor(booking.paymentExpiresAt.getTime() / 1000),
+    expires_at: Math.floor(Math.max(booking.paymentExpiresAt.getTime(), Date.now() + 30 * 60 * 1000) / 1000),
   });
 
   const payment = await Payment.create({
