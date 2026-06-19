@@ -177,6 +177,12 @@ const guideProfileSchema = new mongoose.Schema(
       max: 5,
     },
 
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     payoutProfile: {
       stripeAccountId: {
         type: String,
