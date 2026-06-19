@@ -1,9 +1,17 @@
 import GuideProfile from "../../guides/models/guideProfileModel.js";
 import TouristProfile from "../../tourists/models/touristProfileModel.js";
+import User from "../../users/userModel.js";
 import { AppError } from "../../../utils/AppError.js";
+import logger from "../../../utils/logger.js";
 import { DOCUMENT_VERIFICATION_STATUS, PASSPORT_VERIFICATION_STATUS } from "../../../constants/verificationStatus.js";
 import { updateGuideVerificationStatus } from "../../guides/verification/guideVerificationHelper.js";
 import { updateTouristVerificationStatus } from "../../tourists/verification/touristVerificationHelper.js";
+import {
+  sendGuideVerificationApprovedEmail,
+  sendGuideVerificationRejectedEmail,
+  sendTouristVerificationApprovedEmail,
+  sendTouristVerificationRejectedEmail,
+} from "../../payments/emailService.js";
 
 export const getPendingGuideVerifications = async (page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
@@ -58,6 +66,14 @@ export const approveGuideDocuments = async (guideId, adminId) => {
   updateGuideVerificationStatus(guideProfile);
 
   await guideProfile.save();
+
+  try {
+    const user = await User.findById(guideId).select("email");
+    if (user) await sendGuideVerificationApprovedEmail(user.email);
+  } catch (error) {
+    logger.error(`Guide verification approved email error: ${error.message}`);
+  }
+
   return guideProfile;
 };
 
@@ -81,6 +97,14 @@ export const rejectGuideDocuments = async (guideId, reason, rejectedFields, admi
   updateGuideVerificationStatus(guideProfile);
 
   await guideProfile.save();
+
+  try {
+    const user = await User.findById(guideId).select("email");
+    if (user) await sendGuideVerificationRejectedEmail(user.email, reason);
+  } catch (error) {
+    logger.error(`Guide verification rejected email error: ${error.message}`);
+  }
+
   return guideProfile;
 };
 
@@ -131,6 +155,14 @@ export const approveTouristPassport = async (touristId) => {
   updateTouristVerificationStatus(touristProfile);
 
   await touristProfile.save();
+
+  try {
+    const user = await User.findById(touristId).select("email");
+    if (user) await sendTouristVerificationApprovedEmail(user.email);
+  } catch (error) {
+    logger.error(`Tourist verification approved email error: ${error.message}`);
+  }
+
   return touristProfile;
 };
 
@@ -146,5 +178,13 @@ export const rejectTouristPassport = async (touristId, reason) => {
   touristProfile.verificationRejectionReason = reason;
 
   await touristProfile.save();
+
+  try {
+    const user = await User.findById(touristId).select("email");
+    if (user) await sendTouristVerificationRejectedEmail(user.email, reason);
+  } catch (error) {
+    logger.error(`Tourist verification rejected email error: ${error.message}`);
+  }
+
   return touristProfile;
 };
