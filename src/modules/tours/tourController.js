@@ -45,8 +45,6 @@ export const getActiveTours = asyncHandler(async (req, res) => {
   const { results, pagination } = await tourService.getActiveTours({
     search: req.query.search,
     destination: req.query.destination,
-    minDuration: req.query.minDuration,
-    maxDuration: req.query.maxDuration,
     activity: req.query.activity,
     groupType: req.query.groupType,
     minPrice: req.query.minPrice,

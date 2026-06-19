@@ -24,7 +24,6 @@ export const TOUR_LIMITS = {
   MAX_DESCRIPTION_LENGTH: 2000,
   MAX_DESTINATION_LENGTH: 100,
   MAX_MEETING_POINT_LENGTH: 200,
-  MAX_DURATION_LENGTH: 50,
   MAX_ACTIVITIES: 10,
   MAX_ACTIVITY_NAME_LENGTH: 100,
   MAX_ACTIVITY_DESCRIPTION_LENGTH: 500,
@@ -35,7 +34,6 @@ export const TOUR_LIMITS = {
 
 export const TOUR_SORT_FIELDS = {
   createdAt: "createdAt",
-  duration: "duration",
   title: "title",
   price: "price",
 };

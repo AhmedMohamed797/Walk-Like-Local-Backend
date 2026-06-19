@@ -1,8 +1,10 @@
 import Tour from "./models/tourModel.js";
 import GuideProfile from "../guides/models/guideProfileModel.js";
+import Booking from "../bookings/models/bookingModel.js";
 import { AppError } from "../../utils/AppError.js";
 import { ACCOUNT_VERIFICATION_STATUS } from "../../constants/verificationStatus.js";
 import { TOUR_STATUS, TOUR_SORT_FIELDS, TOUR_DEFAULTS, SUPPORTED_GROUP_TYPE_VALUES } from "../../constants/tourConstants.js";
+import { BOOKING_STATUS } from "../../constants/bookingConstants.js";
 
 const getTourOrThrow = async (tourId) => {
   const tour = await Tour.findById(tourId);
@@ -29,6 +31,29 @@ const ensureGuideVerified = async (userId) => {
   }
 
   return guideProfile;
+};
+
+const hasActiveBookings = (tourId) => Booking.exists({
+  tourId,
+  status: BOOKING_STATUS.ACTIVE,
+});
+
+const hasPendingBookingOnSlot = (tourId, slotId) => Booking.exists({
+  tourId,
+  "slot.slotId": slotId,
+  status: BOOKING_STATUS.PENDING_PAYMENT,
+});
+
+const removesExistingActivities = (tour, nextActivities) => {
+  if (!Array.isArray(nextActivities)) return false;
+
+  const nextActivityIds = new Set(
+    nextActivities
+      .map((activity) => activity._id?.toString())
+      .filter(Boolean),
+  );
+
+  return tour.activities.some((activity) => !nextActivityIds.has(activity._id.toString()));
 };
 
 const GUIDE_POPULATE_SELECT = "fullName";
@@ -89,19 +114,9 @@ export const searchTours = (filter, search) => {
   return filter;
 };
 
-export const filterTours = (filter, { destination, minDuration, maxDuration, activity, groupType, minPrice, maxPrice }) => {
+export const filterTours = (filter, { destination, activity, groupType, minPrice, maxPrice }) => {
   if (destination) {
     filter.destination = { $regex: destination.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
-  }
-
-  if (minDuration !== undefined || maxDuration !== undefined) {
-    const durationFilter = {};
-    if (minDuration !== undefined) durationFilter.$gte = Number(minDuration);
-    if (maxDuration !== undefined) durationFilter.$lte = Number(maxDuration);
-
-    // TODO: When duration is migrated to Number type, use numeric comparison.
-    // Current duration field is String, so numeric range filtering is not directly applicable.
-    // For now, skip duration numeric filtering if the schema remains String-based.
   }
 
   if (activity) {
@@ -145,8 +160,6 @@ export const sortTours = (sortBy, sortOrder, groupType) => {
     sort.createdAt = order;
   } else if (sortBy === TOUR_SORT_FIELDS.title) {
     sort.title = order;
-  } else if (sortBy === TOUR_SORT_FIELDS.duration) {
-    sort.duration = order;
   } else if (sortBy === TOUR_SORT_FIELDS.price) {
     if (!groupType) {
       throw new AppError("groupType is required when sorting by price", 400);
@@ -198,7 +211,6 @@ export const createTour = async (userId, tourData) => {
     description: tourData.description,
     destination: tourData.destination,
     meetingPoint: tourData.meetingPoint || "",
-    duration: tourData.duration,
     pricing: tourData.pricing,
     activities: tourData.activities || [],
     slots: tourData.slots,
@@ -220,8 +232,6 @@ export const getActiveTours = async (queryOptions) => {
   const {
     search,
     destination,
-    minDuration,
-    maxDuration,
     activity,
     groupType,
     minPrice,
@@ -235,7 +245,7 @@ export const getActiveTours = async (queryOptions) => {
   let filter = { status: TOUR_STATUS.ACTIVE };
 
   filter = searchTours(filter, search);
-  filter = filterTours(filter, { destination, minDuration, maxDuration, activity, groupType, minPrice, maxPrice });
+  filter = filterTours(filter, { destination, activity, groupType, minPrice, maxPrice });
   const sort = sortTours(sortBy, sortOrder, groupType);
 
   const { results, pagination } = await paginateTours(filter, sort, page, limit);
@@ -257,18 +267,22 @@ export const updateTour = async (userId, tourId, updates) => {
 
   const updatableFields = [
     "title", "description", "destination", "meetingPoint",
-    "duration", "pricing", "coverImage", "galleryImages",
+    "pricing", "coverImage", "galleryImages",
     "activities",
   ];
+
+  if (
+    (updates.pricing !== undefined || removesExistingActivities(tour, updates.activities)) &&
+    await hasActiveBookings(tour._id)
+  ) {
+    throw new AppError("Cannot update pricing or remove activities while this tour has active bookings", 400);
+  }
 
   for (const field of updatableFields) {
     if (updates[field] !== undefined) {
       tour[field] = updates[field];
     }
   }
-
-  // TODO: When Booking Module is implemented, prevent updating pricing,
-  // removing activities, or deleting booked slots if tour has active bookings.
 
   await tour.save();
   return tour;
@@ -334,7 +348,9 @@ export const deleteSlot = async (userId, tourId, slotId) => {
     throw new AppError("Cannot delete a booked slot", 400);
   }
 
-  // TODO: When Booking Module is implemented, also check for pending bookings on this slot.
+  if (await hasPendingBookingOnSlot(tour._id, slot._id)) {
+    throw new AppError("Cannot delete a slot with a pending booking", 400);
+  }
 
   tour.slots = tour.slots.filter((s) => s._id.toString() !== slotId.toString());
   await tour.save();
