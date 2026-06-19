@@ -9,6 +9,8 @@ import adminVerificationRoutes from "../modules/admin/verification/adminVerifica
 import tourRoutes from "../modules/tours/tourRoute.js";
 import touristBookingRoutes from "../modules/tourists/bookings/touristBookingRoute.js";
 import guideBookingRoutes from "../modules/guides/bookings/guideBookingRoute.js";
+import guideReviewRoutes from "../modules/guides/reviews/guideReviewRoute.js";
+import guidePublicRoutes from "../modules/guides/public/guidePublicRoute.js";
 import adminUserManagementRoutes from "../modules/admin/user-management/adminUserRoute.js";
 import paymentRoutes from "../modules/payments/paymentRoute.js";
 
@@ -18,6 +20,8 @@ router.use("/auth", authRoutes);
 router.use("/guides", guideProfileRoutes);
 router.use("/guides", guideVerificationRoutes);
 router.use("/guides", languageTestRoutes);
+router.use("/guides", guideReviewRoutes);
+router.use("/guides", guidePublicRoutes);
 router.use("/tourists", touristProfileRoutes);
 router.use("/tourists/bookings", touristBookingRoutes);
 router.use("/tourists", touristVerificationRoutes);
