@@ -12,12 +12,30 @@ export const LANGUAGE_TEST_CONFIG = {
   SESSION_EXPIRED_FEEDBACK:
     "The test session expired before all answers were submitted. This counts as a failed attempt.",
   SESSION_EXPIRY_HOURS: 2,
-  TTS_VOICE: "nova",
   MIN_SESSION_DURATION_SECONDS: 90,
   MAX_TAB_SWITCHES: 2,
   MAX_FOCUS_LOSS_EVENTS: 8,
   MAX_PASTE_EVENTS: 0,
   MAX_INTEGRITY_EVENTS_PER_REQUEST: 50,
+};
+
+/**
+ * Groq TTS model + voice per language.
+ * Groq currently offers dedicated English and Arabic (Saudi) TTS models;
+ * other languages use the English model (questions are still generated in the target language).
+ */
+export const GROQ_TTS_CONFIG_BY_LANGUAGE = {
+  ar: { model: "canopylabs/orpheus-arabic-saudi", voice: "fahad" },
+};
+
+export const DEFAULT_GROQ_TTS_CONFIG = {
+  model: "canopylabs/orpheus-v1-english",
+  voice: "troy",
+};
+
+export const getGroqTtsConfig = (languageCode) => {
+  const code = String(languageCode || "").trim().toLowerCase();
+  return GROQ_TTS_CONFIG_BY_LANGUAGE[code] || DEFAULT_GROQ_TTS_CONFIG;
 };
 
 export const SUPPORTED_LANGUAGES = {

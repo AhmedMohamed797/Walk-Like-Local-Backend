@@ -1,21 +1,68 @@
 import { AppError } from "../utils/AppError.js";
 
-const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/speech";
-const OPENAI_TRANSCRIPTION_URL = "https://api.openai.com/v1/audio/transcriptions";
-const DEFAULT_MODEL = "gpt-4o-mini";
+/**
+ * AI service config — free-tier replacement for OpenAI.
+ * Single provider (Groq) for all three jobs: no Docker, no separate cloud
+ * billing account, no extra API keys to manage — just one GROQ_API_KEY.
+ *
+ * - Chat completion: Groq llama-3.3-70b-versatile (OpenAI-compatible API, free tier)
+ * - Text-to-speech: Groq Orpheus / PlayAI TTS (OpenAI-compatible API, free tier)
+ * - Transcription: Groq whisper-large-v3 (OpenAI-compatible API, free tier)
+ *
+ * Required env vars:
+ *   GROQ_API_KEY  - from console.groq.com/keys
+ */
 
-const getApiKey = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_SPEECH_URL = "https://api.groq.com/openai/v1/audio/speech";
+const GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
+
+const DEFAULT_CHAT_MODEL = "llama-3.3-70b-versatile";
+const DEFAULT_SPEECH_MODEL = "canopylabs/orpheus-v1-english";
+const DEFAULT_SPEECH_VOICE = "troy";
+const DEFAULT_TRANSCRIBE_MODEL = "whisper-large-v3";
+
+const getGroqApiKey = () => {
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    throw new AppError("OpenAI API key is not configured", 503);
+    throw new AppError("Groq API key is not configured", 503);
   }
   return apiKey;
 };
 
+const parseGroqErrorBody = (errorBody) => {
+  try {
+    const parsed = JSON.parse(errorBody);
+    return parsed.error || parsed;
+  } catch {
+    return { message: String(errorBody || "") };
+  }
+};
+
+const throwGroqServiceError = (serviceLabel, response, errorBody, fallbackMessage) => {
+  const error = parseGroqErrorBody(errorBody);
+  console.error(`[Groq ${serviceLabel}]`, response.status, errorBody);
+
+  if (error.code === "model_terms_required") {
+    throw new AppError(
+      "Groq TTS requires one-time model terms acceptance. Open the Groq console playground for Orpheus TTS and accept the terms, then retry.",
+      503,
+    );
+  }
+
+  if (error.code === "model_decommissioned") {
+    throw new AppError(
+      "The configured Groq TTS model is no longer available. Update to canopylabs/orpheus-v1-english or canopylabs/orpheus-arabic-saudi.",
+      503,
+    );
+  }
+
+  throw new AppError(fallbackMessage, 503);
+};
+
 export const createChatCompletion = async ({
   messages,
-  model = DEFAULT_MODEL,
+  model = DEFAULT_CHAT_MODEL,
   temperature = 0.6,
   responseFormat,
 }) => {
@@ -29,19 +76,23 @@ export const createChatCompletion = async ({
     body.response_format = responseFormat;
   }
 
-  const response = await fetch(OPENAI_CHAT_URL, {
+  const response = await fetch(GROQ_CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getGroqApiKey()}`,
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[OpenAI Chat]", response.status, errorBody);
-    throw new AppError("Language test evaluation is temporarily unavailable", 503);
+    throwGroqServiceError(
+      "Chat",
+      response,
+      errorBody,
+      "Language test evaluation is temporarily unavailable",
+    );
   }
 
   const data = await response.json();
@@ -54,25 +105,34 @@ export const createChatCompletion = async ({
   return content;
 };
 
-export const createSpeech = async ({ text, voice = "nova" }) => {
-  const response = await fetch(OPENAI_SPEECH_URL, {
+export const createSpeech = async ({
+  text,
+  model = DEFAULT_SPEECH_MODEL,
+  voice = DEFAULT_SPEECH_VOICE,
+  responseFormat = "wav",
+}) => {
+  const response = await fetch(GROQ_SPEECH_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getGroqApiKey()}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini-tts",
+      model,
       input: text,
       voice,
-      response_format: "mp3",
+      response_format: responseFormat,
     }),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[OpenAI TTS]", response.status, errorBody);
-    throw new AppError("Question audio generation is temporarily unavailable", 503);
+    throwGroqServiceError(
+      "TTS",
+      response,
+      errorBody,
+      "Question audio generation is temporarily unavailable",
+    );
   }
 
   const arrayBuffer = await response.arrayBuffer();
@@ -85,24 +145,28 @@ export const transcribeAudio = async ({ audioBuffer, languageCode, mimeType = "a
   const blob = new Blob([audioBuffer], { type: mimeType });
 
   formData.append("file", blob, `recording.${extension}`);
-  formData.append("model", "gpt-4o-mini-transcribe");
+  formData.append("model", DEFAULT_TRANSCRIBE_MODEL);
 
   if (languageCode) {
     formData.append("language", languageCode);
   }
 
-  const response = await fetch(OPENAI_TRANSCRIPTION_URL, {
+  const response = await fetch(GROQ_TRANSCRIPTION_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getGroqApiKey()}`,
     },
     body: formData,
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[OpenAI Whisper]", response.status, errorBody);
-    throw new AppError("Speech transcription is temporarily unavailable", 503);
+    throwGroqServiceError(
+      "Whisper",
+      response,
+      errorBody,
+      "Speech transcription is temporarily unavailable",
+    );
   }
 
   const data = await response.json();
