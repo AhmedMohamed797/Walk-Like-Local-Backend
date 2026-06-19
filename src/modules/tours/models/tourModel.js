@@ -139,11 +139,6 @@ const tourSchema = new mongoose.Schema(
       default: "",
     },
 
-    duration: {
-      type: String,
-      trim: true,
-    },
-
     pricing: {
       type: pricingSchema,
       required: true,
