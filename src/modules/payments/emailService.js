@@ -165,3 +165,78 @@ export const sendBookingCompletedEmail = async (touristEmail, booking) => {
     logger.error(`Failed to send booking completed email to ${touristEmail}: ${err.message}`);
   }
 };
+
+export const sendGuideVerificationApprovedEmail = async (email) => {
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Guide Verification Approved",
+      text: "Congratulations!\n\nYour guide verification has been approved.\n\nYou can now create, manage, and publish tours on Walk Like Local.\n\nThank you for completing the verification process.",
+      html: `
+        <p>Congratulations!</p>
+        <p>Your guide verification has been approved.</p>
+        <p>You can now create, manage, and publish tours on Walk Like Local.</p>
+        <p>Thank you for completing the verification process.</p>
+      `,
+    });
+    logger.info(`Guide verification approved email sent to ${email}`);
+  } catch (err) {
+    logger.error(`Failed to send guide verification approved email to ${email}: ${err.message}`);
+  }
+};
+
+export const sendGuideVerificationRejectedEmail = async (email, rejectionReason) => {
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Guide Verification Rejected",
+      text: `Unfortunately, your guide verification request has been rejected.\n\nReason:\n${rejectionReason}\n\nPlease update your documents and submit a new verification request.`,
+      html: `
+        <p>Unfortunately, your guide verification request has been rejected.</p>
+        <p><strong>Reason:</strong></p>
+        <p>${rejectionReason}</p>
+        <p>Please update your documents and submit a new verification request.</p>
+      `,
+    });
+    logger.info(`Guide verification rejected email sent to ${email}`);
+  } catch (err) {
+    logger.error(`Failed to send guide verification rejected email to ${email}: ${err.message}`);
+  }
+};
+
+export const sendTouristVerificationApprovedEmail = async (email) => {
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Passport Verification Approved",
+      text: "Congratulations!\n\nYour passport verification has been approved successfully.\n\nYou may continue using Walk Like Local normally.",
+      html: `
+        <p>Congratulations!</p>
+        <p>Your passport verification has been approved successfully.</p>
+        <p>You may continue using Walk Like Local normally.</p>
+      `,
+    });
+    logger.info(`Tourist verification approved email sent to ${email}`);
+  } catch (err) {
+    logger.error(`Failed to send tourist verification approved email to ${email}: ${err.message}`);
+  }
+};
+
+export const sendTouristVerificationRejectedEmail = async (email, verificationRejectionReason) => {
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Passport Verification Rejected",
+      text: `Unfortunately, your passport verification request has been rejected.\n\nReason:\n${verificationRejectionReason}\n\nPlease upload a clearer passport document and resubmit your verification request.`,
+      html: `
+        <p>Unfortunately, your passport verification request has been rejected.</p>
+        <p><strong>Reason:</strong></p>
+        <p>${verificationRejectionReason}</p>
+        <p>Please upload a clearer passport document and resubmit your verification request.</p>
+      `,
+    });
+    logger.info(`Tourist verification rejected email sent to ${email}`);
+  } catch (err) {
+    logger.error(`Failed to send tourist verification rejected email to ${email}: ${err.message}`);
+  }
+};
