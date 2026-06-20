@@ -1,18 +1,5 @@
 import { AppError } from "../utils/AppError.js";
 
-/**
- * AI service config — free-tier replacement for OpenAI.
- * Single provider (Groq) for all three jobs: no Docker, no separate cloud
- * billing account, no extra API keys to manage — just one GROQ_API_KEY.
- *
- * - Chat completion: Groq llama-3.3-70b-versatile (OpenAI-compatible API, free tier)
- * - Text-to-speech: Groq Orpheus / PlayAI TTS (OpenAI-compatible API, free tier)
- * - Transcription: Groq whisper-large-v3 (OpenAI-compatible API, free tier)
- *
- * Required env vars:
- *   GROQ_API_KEY  - from console.groq.com/keys
- */
-
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_SPEECH_URL = "https://api.groq.com/openai/v1/audio/speech";
 const GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
