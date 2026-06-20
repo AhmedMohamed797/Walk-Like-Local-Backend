@@ -10,6 +10,7 @@ import { LANGUAGE_TEST_STATUS } from "../../../constants/verificationStatus.js";
 import { updateGuideVerificationStatus } from "../verification/guideVerificationHelper.js";
 import {
   ANSWER_INPUT_MODE,
+  getGroqTtsConfig,
   LANGUAGE_TEST_CONFIG,
   QUESTION_TYPE,
   SESSION_STATUS,
@@ -117,14 +118,16 @@ const normalizeGeneratedQuestions = (questions) => {
   return normalized;
 };
 
-const generateTtsForQuestion = async (sessionId, question) => {
+const generateTtsForQuestion = async (sessionId, languageCode, question) => {
   if (question.ttsAudioUrl) {
     return question;
   }
 
+  const ttsConfig = getGroqTtsConfig(languageCode);
   const audioBuffer = await createSpeech({
     text: question.question,
-    voice: LANGUAGE_TEST_CONFIG.TTS_VOICE,
+    model: ttsConfig.model,
+    voice: ttsConfig.voice,
   });
 
   return {
@@ -136,13 +139,13 @@ const generateTtsForQuestion = async (sessionId, question) => {
   };
 };
 
-const attachTtsAudioToSpokenQuestions = async (sessionId, questions) =>
+const attachTtsAudioToSpokenQuestions = async (sessionId, languageCode, questions) =>
   Promise.all(
     questions.map(async (question) => {
       if (question.type !== QUESTION_TYPE.SPOKEN) {
         return question;
       }
-      return generateTtsForQuestion(sessionId, question);
+      return generateTtsForQuestion(sessionId, languageCode, question);
     }),
   );
 
@@ -416,6 +419,7 @@ export const startLanguageTest = async (userId, languageCode) => {
     if (needsTtsUpload) {
       existingSession.questions = await attachTtsAudioToSpokenQuestions(
         existingSession._id,
+        existingSession.language,
         existingSession.questions,
       );
       await existingSession.save();
@@ -434,7 +438,11 @@ export const startLanguageTest = async (userId, languageCode) => {
     expiresAt: getSessionExpiryDate(),
   });
 
-  session.questions = await attachTtsAudioToSpokenQuestions(session._id, session.questions);
+  session.questions = await attachTtsAudioToSpokenQuestions(
+    session._id,
+    session.language,
+    session.questions,
+  );
   await session.save();
 
   languageRecord.status = LANGUAGE_TEST_STATUS.IN_PROGRESS;
@@ -559,7 +567,7 @@ export const getQuestionTtsAudio = async (userId, sessionId, questionId) => {
   }
 
   if (!question.ttsAudioUrl) {
-    const updatedQuestion = await generateTtsForQuestion(sessionId, question);
+    const updatedQuestion = await generateTtsForQuestion(sessionId, session.language, question);
     Object.assign(question, updatedQuestion);
     await session.save();
   }
