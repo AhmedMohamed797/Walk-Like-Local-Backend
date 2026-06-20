@@ -13,6 +13,7 @@ import guideReviewRoutes from "../modules/guides/reviews/guideReviewRoute.js";
 import guidePublicRoutes from "../modules/guides/public/guidePublicRoute.js";
 import adminUserManagementRoutes from "../modules/admin/user-management/adminUserRoute.js";
 import paymentRoutes from "../modules/payments/paymentRoute.js";
+import { guideEarningsRouter, adminRevenueRouter } from "../modules/earnings/earningsRoute.js";
 
 const router = Router();
 
@@ -30,6 +31,8 @@ router.use("/tours", tourRoutes);
 router.use("/guides/bookings", guideBookingRoutes);
 router.use("/admin", adminUserManagementRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/guides/earnings", guideEarningsRouter);
+router.use("/admin", adminRevenueRouter);
 
 router.get("/health", (req, res) => {
   res.json({ success: true, message: "Server is running" });
