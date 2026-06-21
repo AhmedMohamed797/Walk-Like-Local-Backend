@@ -2,6 +2,7 @@ import GuideProfile from "../models/guideProfileModel.js";
 import { AppError } from "../../../utils/AppError.js";
 import { GUIDE_PROFILE_LIMITS } from "../../../constants/guideProfileConstants.js";
 import { updateGuideVerificationStatus } from "../verification/guideVerificationHelper.js";
+import { indexGuideProfile } from "../../tourists/recommendations/recommendationIndexService.js";
 import {
   assertCanUpdateLanguages,
   normalizeLanguageCodeList,
@@ -17,6 +18,17 @@ const getGuideProfileOrThrow = async (userId) => {
   }
 
   return guideProfile;
+};
+
+const indexGuideProfileSafely = async (guideProfileId) => {
+  try {
+    await indexGuideProfile(guideProfileId);
+  } catch (error) {
+    console.warn(
+      "[recommendations] Guide profile saved, but AI indexing failed:",
+      error.message,
+    );
+  }
 };
 
 export const getGuideProfile = async (userId) => {
@@ -57,6 +69,7 @@ export const updateGuideProfile = async (userId, updates) => {
   }
 
   await guideProfile.save();
+  await indexGuideProfileSafely(guideProfile._id);
 
   return sanitizeGuideProfile(guideProfile);
 };
@@ -86,6 +99,7 @@ export const setGuideLanguages = async (userId, languages) => {
   updateGuideVerificationStatus(guideProfile);
 
   await guideProfile.save();
+  await indexGuideProfileSafely(guideProfile._id);
 
   return sanitizeGuideProfile(guideProfile);
 };
