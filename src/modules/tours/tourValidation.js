@@ -109,13 +109,6 @@ export const createTourValidation = [
     .isLength({ max: TOUR_LIMITS.MAX_MEETING_POINT_LENGTH })
     .withMessage(`Meeting point must be at most ${TOUR_LIMITS.MAX_MEETING_POINT_LENGTH} characters`),
 
-  body("duration")
-    .trim()
-    .notEmpty()
-    .withMessage("Duration is required")
-    .isLength({ max: TOUR_LIMITS.MAX_DURATION_LENGTH })
-    .withMessage(`Duration must be at most ${TOUR_LIMITS.MAX_DURATION_LENGTH} characters`),
-
   ...pricingRules("pricing", true),
 
   ...cloudinaryMediaRules("coverImage", true),
@@ -221,14 +214,6 @@ export const updateTourValidation = [
     .isLength({ max: TOUR_LIMITS.MAX_MEETING_POINT_LENGTH })
     .withMessage(`Meeting point must be at most ${TOUR_LIMITS.MAX_MEETING_POINT_LENGTH} characters`),
 
-  body("duration")
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage("Duration cannot be empty")
-    .isLength({ max: TOUR_LIMITS.MAX_DURATION_LENGTH })
-    .withMessage(`Duration must be at most ${TOUR_LIMITS.MAX_DURATION_LENGTH} characters`),
-
   ...pricingRules("pricing", false),
 
   ...cloudinaryMediaRules("coverImage", false),
@@ -283,7 +268,7 @@ export const updateTourValidation = [
   body().custom((_, { req }) => {
     const updatableFields = [
       "title", "description", "destination", "meetingPoint",
-      "duration", "pricing", "coverImage", "galleryImages",
+      "pricing", "coverImage", "galleryImages",
       "activities",
     ];
     const hasAtLeastOne = updatableFields.some((field) => req.body[field] !== undefined);
@@ -306,16 +291,6 @@ export const getActiveToursValidation = [
     .trim()
     .isLength({ max: TOUR_LIMITS.MAX_DESTINATION_LENGTH })
     .withMessage(`Destination filter must be at most ${TOUR_LIMITS.MAX_DESTINATION_LENGTH} characters`),
-
-  query("minDuration")
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage("minDuration must be a non-negative number"),
-
-  query("maxDuration")
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage("maxDuration must be a non-negative number"),
 
   query("activity")
     .optional()
@@ -368,12 +343,6 @@ export const getActiveToursValidation = [
 
     if (req.query.sortBy === "price" && !req.query.groupType) {
       throw new Error("groupType is required when sorting by price");
-    }
-
-    if (req.query.minDuration && req.query.maxDuration) {
-      if (Number(req.query.minDuration) > Number(req.query.maxDuration)) {
-        throw new Error("minDuration cannot be greater than maxDuration");
-      }
     }
 
     if (req.query.minPrice && req.query.maxPrice) {
