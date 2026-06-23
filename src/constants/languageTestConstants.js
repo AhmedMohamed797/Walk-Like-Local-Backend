@@ -1,5 +1,5 @@
 export const LANGUAGE_TEST_CONFIG = {
-  PASS_SCORE: 60,
+  PASS_SCORE: 40,
   QUESTIONS_COUNT: 5,
   WRITTEN_QUESTIONS_COUNT: 3,
   SPOKEN_QUESTIONS_COUNT: 2,
@@ -11,7 +11,7 @@ export const LANGUAGE_TEST_CONFIG = {
   TTS_AUDIO_CLOUDINARY_FOLDER: "language-test/tts",
   SESSION_EXPIRED_FEEDBACK:
     "The test session expired before all answers were submitted. This counts as a failed attempt.",
-  SESSION_EXPIRY_HOURS: 2,
+  SESSION_EXPIRY_HOURS: 1,
   MIN_SESSION_DURATION_SECONDS: 90,
   MAX_TAB_SWITCHES: 2,
   MAX_FOCUS_LOSS_EVENTS: 8,

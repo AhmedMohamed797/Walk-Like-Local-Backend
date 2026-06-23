@@ -2,8 +2,10 @@ import Booking from "./models/bookingModel.js";
 import Coupon from "./models/couponModel.js";
 import Tour from "../tours/models/tourModel.js";
 import User from "../users/userModel.js";
+import TouristProfile from "../tourists/models/touristProfileModel.js";
 import { AppError } from "../../utils/AppError.js";
 import { ROLES } from "../../constants/roles.js";
+import { PASSPORT_VERIFICATION_STATUS } from "../../constants/verificationStatus.js";
 import { TOUR_STATUS } from "../../constants/tourConstants.js";
 import {
   BOOKING_STATUS,
@@ -80,6 +82,11 @@ const paginateBookings = async (filter, sort, page, limit) => {
 
 export const createBooking = async (touristId, bookingData) => {
   const { tourId, slotId, groupSize, members = [], deselectedActivityIds = [], couponCode } = bookingData;
+
+  const touristProfile = await TouristProfile.findOne({ user: touristId });
+  if (!touristProfile || touristProfile.passportVerificationStatus !== PASSPORT_VERIFICATION_STATUS.VERIFIED) {
+    throw new AppError("Only verified tourists can make bookings", 403);
+  }
 
   const tour = await Tour.findById(tourId);
   if (!tour) {

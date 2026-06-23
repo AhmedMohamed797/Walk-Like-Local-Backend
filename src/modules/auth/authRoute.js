@@ -13,6 +13,7 @@ import {
   resendResetCode,
   resetPassword,
   changePassword,
+  logout,
 } from "./authController.js";
 import { handleValidation } from "./authValidation.js";
 import {
@@ -72,6 +73,7 @@ router.post(
   resendResetCode,
 );
 router.post("/reset-password", resetPasswordValidation, handleValidation, resetPassword);
+router.post("/logout", authMiddleware, logout);
 router.patch(
   "/change-password",
   authMiddleware,

@@ -225,3 +225,10 @@ export const changePassword = asyncHandler(async (req, res) => {
     message: "Password changed successfully",
   });
 });
+
+export const logout = asyncHandler(async (req, res) => {
+  return res.json({
+    success: true,
+    message: "Logout successful",
+  });
+});

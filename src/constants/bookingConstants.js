@@ -37,6 +37,7 @@ export const BOOKING_LIMITS = {
   DEFAULT_RATING: 5,
   MIN_RATING: 0,
   MAX_RATING: 5,
+  MAX_LIST_LIMIT: 50,
 };
 
 export const BOOKING_DEFAULTS = {
