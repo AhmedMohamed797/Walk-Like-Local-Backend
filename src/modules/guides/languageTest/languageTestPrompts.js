@@ -77,16 +77,14 @@ Practical guiding ability (25 points):
 - Shows awareness of Egyptian tourism norms (tipping, dress codes, site rules)
 
 Authenticity and originality (15 points):
-- Answers sound like a real working guide, not a textbook or AI
 - Personal or local detail that only a practicing Egyptian guide would know
 - Natural spoken delivery, not a recited script
 
-Deduct points and flag if any of the following are detected:
+Deduct points if any of the following are detected:
 - Generic or template-like answers with no Egypt-specific detail
 - Historically inaccurate statements about Egyptian sites or culture
 - Answers that could apply to any country, not specifically Egypt
 - Spoken transcripts that sound read from a prepared script
-- Responses that appear AI-generated or copied
 
 Pass threshold: ${LANGUAGE_TEST_CONFIG.PASS_SCORE}/100.
 
@@ -111,7 +109,7 @@ Return ONLY valid JSON:
   "feedback": "Short overall feedback for the guide",
   "issues": ["optional list of specific issues"],
   "likelyAiGenerated": false,
-  "aiDetectionDetails": "Brief note if answers seem AI-generated or copied, otherwise empty string"
+  "aiDetectionDetails": ""
 }
 `.trim();
 };
