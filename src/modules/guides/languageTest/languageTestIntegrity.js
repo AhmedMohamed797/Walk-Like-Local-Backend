@@ -78,12 +78,12 @@ export const evaluateIntegrity = ({ session, questions, evaluation = null }) => 
     issues.push(`Too many focus-loss events (${counts.focusLossCount})`);
   }
 
-  if (evaluation?.likelyAiGenerated) {
-    issues.push(
-      evaluation.aiDetectionDetails ||
-        "Answers appear to be AI-generated rather than original guide responses",
-    );
-  }
+  // if (evaluation?.likelyAiGenerated) {
+  //   issues.push(
+  //     evaluation.aiDetectionDetails ||
+  //       "Answers appear to be AI-generated rather than original guide responses",
+  //   );
+  // }
 
   return {
     passed: issues.length === 0,
