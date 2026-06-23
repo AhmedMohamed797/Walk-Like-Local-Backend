@@ -1,7 +1,10 @@
 import * as bookingService from "./bookingService.js";
 import { asyncHandler } from "../../middlewares/error.middleware.js";
 import { ROLES } from "../../constants/roles.js";
-import { BOOKING_DEFAULTS } from "../../constants/bookingConstants.js";
+import {
+  BOOKING_DEFAULTS,
+  BOOKING_LIMITS,
+} from "../../constants/bookingConstants.js";
 
 const ensureTourist = (req, res) => {
   if (req.user.role !== ROLES.TOURIST) {
@@ -55,7 +58,7 @@ export const getMyBookings = asyncHandler(async (req, res) => {
     dateFrom: req.query.dateFrom,
     dateTo: req.query.dateTo,
     page: parseInt(req.query.page) || BOOKING_DEFAULTS.DEFAULT_PAGE,
-    limit: parseInt(req.query.limit) || BOOKING_DEFAULTS.DEFAULT_LIMIT,
+    limit: Math.min(parseInt(req.query.limit) || BOOKING_DEFAULTS.DEFAULT_LIMIT, BOOKING_LIMITS.MAX_LIST_LIMIT),
     sort: req.query.sort || BOOKING_DEFAULTS.DEFAULT_SORT,
   });
 
@@ -96,7 +99,7 @@ export const getGuideBookings = asyncHandler(async (req, res) => {
     dateFrom: req.query.dateFrom,
     dateTo: req.query.dateTo,
     page: parseInt(req.query.page) || BOOKING_DEFAULTS.DEFAULT_PAGE,
-    limit: parseInt(req.query.limit) || BOOKING_DEFAULTS.DEFAULT_LIMIT,
+    limit: Math.min(parseInt(req.query.limit) || BOOKING_DEFAULTS.DEFAULT_LIMIT, BOOKING_LIMITS.MAX_LIST_LIMIT),
     sort: req.query.sort || BOOKING_DEFAULTS.DEFAULT_SORT,
   });
 
